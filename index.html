@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英単語クイズ・マルチボールブロック崩し</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px 0; 
+            background: #111;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            min-height: 100vh; 
+            font-family: sans-serif;
+            user-select: none;
+        }
+
+        /* 画面切り替え用の構造 */
+        #home-screen {
+            display: block;
+            text-align: center;
+            margin-top: 60px;
+        }
+        #game-screen, #wordbook-screen, #highscore-screen {
+            display: none;
+            position: relative;
+        }
+
+        /* 元のゲームデザインを維持するラッパー */
+        #game-main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: filter 0.3s ease; 
+        }
+        .blur-active {
+            filter: blur(10px) grayscale(0.4);
+            pointer-events: none;
+        }
+
+        /* ホーム（メニュー）画面のデザイン */
+        .menu-container {
+            width: 320px;
+            padding: 30px;
+            background: rgba(25, 25, 25, 0.9);
+            border: 2px solid #00ffaa;
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 170, 0.2);
+        }
+        .menu-title {
+            font-size: 26px;
+            margin: 0 0 5px;
+            background: linear-gradient(45deg, #00ffaa, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+        .player-display {
+            font-size: 14px;
+            color: #00ffaa;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .menu-subtitle {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        /* 単語帳・ハイスコア等の独立画面共通コンテナデザイン */
+        .sub-screen-container {
+            width: 340px;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        
+        /* 単語帳用の個別カラー */
+        .wordbook-border {
+            background: rgba(25, 25, 25, 0.95);
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+        }
+        .wordbook-title {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        /* ハイスコア専用画面の個別カラー */
+        .highscore-border {
+            background: rgba(25, 25, 25, 0.95);
+            border: 2px solid #ffff33;
+            box-shadow: 0 0 30px rgba(255, 255, 51, 0.2);
+        }
+        .highscore-title {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #ffff33;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* ランキング表示リスト */
+        .ranking-list {
+            max-height: 280px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .ranking-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            font-size: 15px;
+        }
+        .ranking-item:last-child {
+            border-bottom: none;
+        }
+        .ranking-item.current-user {
+            background: rgba(0, 255, 170, 0.15);
+            border: 1px solid #00ffaa;
+            border-radius: 4px;
+        }
+        .ranking-rank { color: #ffff33; font-weight: bold; width: 45px; text-align: left; }
+        .ranking-name { color: #fff; flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ranking-score { color: #00ffaa; font-family: monospace; font-weight: bold; }
+
+        .word-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            text-align: left;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333;
+            font-size: 15px;
+        }
+        .word-item:last-child {
+            border-bottom: none;
+        }
+        .word-q { color: #ffff33; font-weight: bold; }
+        .word-a { color: #00ffaa; font-family: monospace; }
+
+        /* 元のUIコンテナ群 */
+        #ui-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 8px;
+            width: 400px;
+        }
+        #info {
+            font-size: 16px;
+            width: 100%;
+            padding-right: 120px;
+            box-sizing: border-box;
+            text-align: left;
+            padding-left: 10px;
+        }
+        #game-highscore-container {
+            position: absolute;
+            top: 2px;
+            right: 10px;
+            font-size: 14px;
+            color: #ffff33;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 51, 0.5);
+        }
+        
+        .action-btn-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #speed-controller {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #333;
+            padding: 4px 15px;
+            border-radius: 20px;
+            border: 1px solid #555;
+            font-size: 13px;
+        }
+        #speedSlider {
+            cursor: pointer;
+            accent-color: #ff0055;
+        }
+        #quiz-trigger-btn {
+            padding: 6px 16px;
+            font-size: 14px;
+            background: #00ffaa;
+            color: #111;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 255, 170, 0.4);
+        }
+        #quiz-trigger-btn:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* プレイ中のゲーム終了ボタン */
+        #giveup-btn {
+            padding: 6px 14px;
+            font-size: 13px;
+            background: #ff3333;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.4);
+        }
+        #giveup-btn:hover {
+            background: #ff5555;
+        }
+
+        /* クイズ用モーダル */
+        #quiz-modal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.95);
+            border: 3px solid #00ffaa;
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 170, 0.3);
+            z-index: 10;
+        }
+        #quiz-question {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffff33;
+            margin-bottom: 12px;
+        }
+        #quiz-form-container {
+            display: block;
+        }
+        #quiz-input {
+            padding: 6px 8px;
+            font-size: 14px;
+            width: 140px;
+            border-radius: 4px;
+            border: 1px solid #aaa;
+            text-align: center;
+            margin-bottom: 12px;
+            background: #fff;
+            color: #000;
+        }
+        #quiz-submit-btn {
+            padding: 6px 14px;
+            font-size: 14px;
+            background: #00ffaa;
+            color: #111;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #quiz-result {
+            font-size: 16px;
+            margin-top: 10px;
+            font-weight: bold;
+            min-height: 20px;
+            white-space: pre-line;
+        }
+
+        /* キャンバスコンテナ */
+        #canvas-container {
+            position: relative;
+            width: 400px;
+            height: 560px;
+            touch-action: none; 
+        }
+        canvas {
+            background: #222;
+            border: 4px solid #fff;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+            position: absolute;
+            top: 0; left: 0;
+        }
+
+        /* ボタン用共通スタイル */
+        .menu-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .menu-btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #00ffaa, #00b377);
+            color: #111;
+            border: none;
+        }
+        .btn-wordbook {
+            background: linear-gradient(135deg, #00ffff, #0088cc);
+            color: #111;
+            border: none;
+        }
+        .btn-highscore {
+            background: linear-gradient(135deg, #ffff33, #cccc00);
+            color: #111;
+            border: none;
+        }
+        .btn-back {
+            background: #444;
+            border: 1px solid #666;
+            margin-bottom: 0;
+        }
+
+        /* ホーム画面用の小さいアカウント削除ボタン */
+        .btn-delete-small {
+            margin-top: 10px;
+            padding: 5px;
+            font-size: 12px;
+            color: #888;
+            background: transparent;
+            border: none;
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .btn-delete-small:hover {
+            color: #ff5555;
+        }
+
+        /* ゲームオーバー時のレイヤー */
+        #gameover-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 1500;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.85);
+        }
+        
+        #gameover-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #ff3333;
+            text-shadow: 0 0 20px rgba(255, 51, 51, 0.8);
+            margin-bottom: 5px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        
+        #gameover-score-box {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        #gameover-score-box span {
+            color: #ffff33;
+            font-size: 28px;
+        }
+
+        #save-status-msg {
+            color: #00ffaa;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            min-height: 24px;
+        }
+
+        #gameover-actions {
+            width: 220px;
+            text-align: center;
+        }
+        .retry-layout-btn {
+            padding: 12px 24px;
+            font-size: 18px;
+            background: #ff3333;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.5);
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .back-menu-layout-btn {
+            padding: 10px 20px;
+            font-size: 15px;
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="home-screen">
+    <div class="menu-container">
+        <div class="menu-title">BRK BREAKER</div>
+        <div class="player-display">PLAYER: <span id="current-player-id">----</span></div>
+        <div class="menu-subtitle">MULTIBALL & QUIZ</div>
+        
+        <button class="menu-btn btn-start" id="start-game-btn">ゲームスタート</button>
+        <button class="menu-btn btn-wordbook" id="open-wordbook-btn">単語帳を見る</button>
+        <button class="menu-btn btn-highscore" id="open-highscore-btn">ランキングを見る</button>
+        
+        <button class="btn-delete-small" id="delete-account-btn">このアカウントを削除</button>
+    </div>
+</div>
+
+<div id="wordbook-screen">
+    <div class="sub-screen-container wordbook-border">
+        <div class="wordbook-title">📖 収録英単語一覧</div>
+        <div class="word-list" id="word-list-container"></div>
+        <button class="menu-btn btn-back" id="close-wordbook-btn">メニューに戻る</button>
+    </div>
+</div>
+
+<div id="highscore-screen">
+    <div class="sub-screen-container highscore-border">
+        <div class="highscore-title">🏆 TOP 10 RANKING</div>
+        <div class="ranking-list" id="ranking-list-container"></div>
+        <button class="menu-btn btn-back" id="close-highscore-btn">メニューに戻る</button>
+    </div>
+</div>
+
+<div id="game-screen">
+    <div id="gameover-overlay">
+        <div id="gameover-title">GAME OVER</div>
+        <div id="gameover-score-box">YOUR SCORE: <span id="gameover-score">0</span></div>
+        <div id="save-status-msg"></div>
+
+        <div id="gameover-actions">
+            <button id="retry-btn" class="retry-layout-btn">もう一度遊ぶ (RETRY)</button>
+            <button id="back-to-menu-btn" class="back-menu-layout-btn">メニューに戻る</button>
+        </div>
+    </div>
+
+    <div id="game-main-content">
+        <div id="ui-container">
+            <div id="game-highscore-container">HI-SCORE: <span id="game-highscore">0</span></div>
+            <div id="info">SCORE: <span id="score">0</span> | BALLS: <span id="ballCount">1</span></div>
+            <div class="action-btn-group">
+                <button id="quiz-trigger-btn">ボール ＋1</button>
+                <button id="giveup-btn">ゲーム終了</button>
+            </div>
+            <div id="speed-controller">
+                <span>SPEED:</span>
+                <input type="range" id="speedSlider" min="3" max="30" value="8" step="1">
+                <span id="speedValue">8</span>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="gameCanvas" width="400" height="560"></canvas>
+        </div>
+    </div>
+
+    <div id="quiz-modal">
+        <div id="quiz-question">【問題】</div>
+        <div id="quiz-form-container">
+            <input type="text" id="quiz-input" placeholder="英単語を入力"><br>
+            <button id="quiz-submit-btn">解答する</button>
+        </div>
+        <div id="quiz-result"></div>
+    </div>
+</div>
+
+<script>
+let playerName = "";
+
+// ログイン・四連番号入力関数
+function promptPlayerLogin() {
+    let input = null;
+    while (!input) {
+        let res = prompt("4桁の番号を入力してください（登録済みの番号を入力するとログインできます）");
+        if (res !== null) {
+            res = res.trim();
+            if (res.length > 0) {
+                input = res;
+            } else {
+                alert("番号が入力されていません。入力してください。");
+            }
+        } else {
+            alert("番号を入力しないとゲームを開始できません。");
+        }
+    }
+    playerName = input;
+    document.getElementById("current-player-id").innerText = playerName;
+}
+
+// 初期ログイン実行
+promptPlayerLogin();
+
+const homeScreen = document.getElementById("home-screen");
+const gameScreen = document.getElementById("game-screen");
+const wordbookScreen = document.getElementById("wordbook-screen");
+const highscoreScreen = document.getElementById("highscore-screen"); 
+const gameMainContent = document.getElementById("game-main-content");
+
+const startGameBtn = document.getElementById("start-game-btn");
+const openWordbookBtn = document.getElementById("open-wordbook-btn");
+const closeWordbookBtn = document.getElementById("close-wordbook-btn");
+const openHighscoreBtn = document.getElementById("open-highscore-btn"); 
+const closeHighscoreBtn = document.getElementById("close-highscore-btn"); 
+const deleteAccountBtn = document.getElementById("delete-account-btn");
+const giveupBtn = document.getElementById("giveup-btn");
+const backToMenuBtn = document.getElementById("back-to-menu-btn");
+const gameoverOverlay = document.getElementById("gameover-overlay");
+const gameHighscoreDisplay = document.getElementById("game-highscore");
+const rankingListContainer = document.getElementById("ranking-list-container");
+const saveStatusMsg = document.getElementById("save-status-msg");
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreDisplay = document.getElementById("score");
+const ballCountDisplay = document.getElementById("ballCount");
+const speedSlider = document.getElementById("speedSlider");
+const speedValue = document.getElementById("speedValue");
+const retryBtn = document.getElementById("retry-btn");
+const wordListContainer = document.getElementById("word-list-container");
+const quizTriggerBtn = document.getElementById("quiz-trigger-btn");
+const quizModal = document.getElementById("quiz-modal");
+const quizQuestion = document.getElementById("quiz-question");
+const quizFormContainer = document.getElementById("quiz-form-container");
+const quizInput = document.getElementById("quiz-input");
+const quizSubmitBtn = document.getElementById("quiz-submit-btn");
+const quizResult = document.getElementById("quiz-result");
+
+let score = 0;
+let highscore = 0;
+let rankings = [];
+let gameOver = false;
+let isBallMoving = false; 
+let maxBalls = 1; 
+let totalRowsSpawned = 1; 
+
+let isWarningActive = false;
+let warningTimer = 0;
+let warningPulseCounter = 0;       
+let lastTurnWarningState = false;
+const quizBank = [
+    { q: "りんご", a: "apple" },
+    { q: "本", a: "book" },
+    { q: "ねこ", a: "cat" },
+    { q: "犬", a: "dog" },
+    { q: "学校", a: "school" },
+    { q: "友達", a: "friend" },
+    { q: "水", a: "water" },
+    { q: "太陽", a: "sun" },
+    { q: "家", a: "house" },
+    { q: "音楽", a: "music" }
+];
+let currentQuiz = null;
+let hasAnsweredThisTurn = false; 
+
+let balls = [];
+const ballRadius = 8;
+let ballSpeed = parseInt(speedSlider.value, 10); 
+let launchDelayCounter = 0;
+const launchDelay = 6; 
+
+let items = [];
+const itemRadius = 12; 
+const itemFallSpeed = 1.0; 
+
+const brickColumnCount = 7; 
+const brickPadding = 4;
+const brickSize = (canvas.width - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;       
+const brickOffsetTop = 0;  
+const brickOffsetLeft = 0;
+const warningLineRow = 9; 
+const gameOverRow = 10;
+const warningRedLineY = warningLineRow * (brickSize + brickPadding) - brickPadding;
+const gameoverDeadlineY = gameOverRow * (brickSize + brickPadding) - brickPadding; 
+
+let bricks = [];
+
+/* --- ランキングデータ読み込み関数 --- */
+function loadRankings() {
+    const data = localStorage.getItem("brk_breaker_rankings");
+    if (data) {
+        rankings = JSON.parse(data);
+    } else {
+        rankings = [];
+    }
+    
+    highscore = rankings.length > 0 ? rankings[0].score : 0;
+    gameHighscoreDisplay.innerText = highscore;
+}
+
+/* --- 上位10名のランキング描画 --- */
+function renderRankings() {
+    rankingListContainer.innerHTML = "";
+    if (rankings.length === 0) {
+        rankingListContainer.innerHTML = `<div style="color:#888; padding: 10px;">記録がありません</div>`;
+        return;
+    }
+    rankings.forEach((item, index) => {
+        const div = document.createElement("div");
+        const isCurrent = item.name === playerName;
+        div.className = `ranking-item ${isCurrent ? 'current-user' : ''}`;
+        div.innerHTML = `
+            <span class="ranking-rank">${index + 1}位</span>
+            <span class="ranking-name">${escapeHTML(item.name)}${isCurrent ? ' (自分)' : ''}</span>
+            <span class="ranking-score">${item.score}</span>
+        `;
+        rankingListContainer.appendChild(div);
+    });
+}
+
+/* --- スコア保存処理 --- */
+function checkAndSaveHighScore() {
+    if (score <= 0) {
+        saveStatusMsg.innerText = "";
+        return;
+    }
+
+    const existingIndex = rankings.findIndex(item => item.name === playerName);
+
+    if (existingIndex !== -1) {
+        if (score > rankings[existingIndex].score) {
+            rankings[existingIndex].score = score;
+            saveStatusMsg.innerText = "🎉 自己ベスト更新！";
+        } else {
+            saveStatusMsg.innerText = "";
+        }
+    } else {
+        rankings.push({ name: playerName, score: score });
+        saveStatusMsg.innerText = "🎉 ランキングに記録されました！";
+    }
+
+    rankings.sort((a, b) => b.score - a.score);
+    localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
+    loadRankings();
+}
+
+function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+}
+
+window.addEventListener('storage', (e) => {
+    if (e.key === 'brk_breaker_rankings') {
+        loadRankings();
+        if (highscoreScreen.style.display === 'block') {
+            renderRankings();
+        }
+    }
+});
+
+loadRankings();
+
+startGameBtn.addEventListener("click", () => {
+    homeScreen.style.display = "none";
+    gameScreen.style.display = "block";
+    initGame();
+});
+openWordbookBtn.addEventListener("click", () => {
+    homeScreen.style.display = "none";
+    wordbookScreen.style.display = "block";
+});
+closeWordbookBtn.addEventListener("click", () => {
+    wordbookScreen.style.display = "none";
+    homeScreen.style.display = "block";
+});
+openHighscoreBtn.addEventListener("click", () => {
+    renderRankings();
+    homeScreen.style.display = "none";
+    highscoreScreen.style.display = "block";
+});
+closeHighscoreBtn.addEventListener("click", () => {
+    highscoreScreen.style.display = "none";
+    homeScreen.style.display = "block";
+});
+
+deleteAccountBtn.addEventListener("click", () => {
+    if (confirm(`アカウント「${playerName}」の記録を削除しますか？`)) {
+        rankings = rankings.filter(item => item.name !== playerName);
+        localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
+        loadRankings();
+
+        alert(`アカウント「${playerName}」を削除しました。`);
+
+        setTimeout(() => {
+            promptPlayerLogin();
+        }, 50);
+    }
+});
+
+// --- ゲーム中断（ギブアップ・ゲームオーバー実行）処理 ---
+giveupBtn.addEventListener("click", () => {
+    if (confirm("ゲームを終了してゲームオーバーにしますか？")) {
+        triggerGameOver();
+    }
+});
+
+backToMenuBtn.addEventListener("click", () => {
+    gameoverOverlay.style.display = "none";
+    gameMainContent.classList.remove("blur-active");
+    gameScreen.style.display = "none";
+    homeScreen.style.display = "block";
+});
+speedSlider.addEventListener("input", function() {
+    ballSpeed = parseInt(this.value, 10);
+    speedValue.innerText = ballSpeed;
+    normalizeBallVelocities();
+});
+function normalizeBallVelocities() {
+    balls.forEach(ball => {
+        if (ball.active) {
+            const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            if (currentSpeed > 0) {
+                ball.dx = (ball.dx / currentSpeed) * ballSpeed;
+                ball.dy = (ball.dy / currentSpeed) * ballSpeed;
+            }
+        }
+    });
+}
+
+const startX = canvas.width / 2;
+const startY = canvas.height - 30;
+let isAiming = false;
+let aimX = 0;
+let aimY = 0;
+
+function initGame() {
+    score = 0;
+    maxBalls = 1;
+    totalRowsSpawned = 1;
+    gameOver = false;
+    isBallMoving = false;
+    hasAnsweredThisTurn = false;
+    isWarningActive = false;
+    warningTimer = 0;
+    warningPulseCounter = 0;
+    lastTurnWarningState = false;
+    balls = [];
+    items = []; 
+    
+    scoreDisplay.innerText = score;
+    gameHighscoreDisplay.innerText = highscore;
+    ballCountDisplay.innerText = maxBalls;
+    gameoverOverlay.style.display = "none";
+    gameMainContent.classList.remove("blur-active");
+    quizTriggerBtn.disabled = false;
+    giveupBtn.disabled = false;
+    saveStatusMsg.innerText = "";
+
+    bricks = [];
+    for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c] = [];
+        createBlock(c, 0); 
+    }
+    
+    closeQuizModal();
+    requestAnimationFrame(draw);
+}
+
+function generateWordbook() {
+    wordListContainer.innerHTML = "";
+    quizBank.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "word-item";
+        div.innerHTML = `<span class="word-q">${item.q}</span><span class="word-a">${item.a}</span>`;
+        wordListContainer.appendChild(div);
+    });
+}
+generateWordbook();
+
+canvas.addEventListener("dblclick", () => {
+    if(!gameOver && !isBallMoving) {
+        spawnNewRow();
+    }
+});
+quizTriggerBtn.addEventListener("click", () => {
+    if (hasAnsweredThisTurn || isBallMoving || gameOver) return;
+    
+    const randomIndex = Math.floor(Math.random() * quizBank.length);
+    currentQuiz = quizBank[randomIndex];
+    
+    quizQuestion.innerText = `「${currentQuiz.q}」を英語で？`;
+    
+    quizFormContainer.style.display = "block"; 
+    quizInput.value = "";
+    quizInput.disabled = false;
+    quizSubmitBtn.disabled = false;
+    quizResult.innerText = "";
+    
+    quizModal.style.display = "block";
+    quizInput.focus();
+});
+quizSubmitBtn.addEventListener("click", checkAnswer);
+quizInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter" && !quizSubmitBtn.disabled) {
+        checkAnswer();
+    }
+});
+function checkAnswer() {
+    if (hasAnsweredThisTurn || !currentQuiz) return;
+
+    hasAnsweredThisTurn = true; 
+    quizTriggerBtn.disabled = true; 
+
+    quizFormContainer.style.display = "none";
+    const userAnswer = quizInput.value.trim().toLowerCase();
+    if (userAnswer === currentQuiz.a) {
+        quizResult.style.color = "#00ff00";
+        quizResult.innerText = "⭕ 正解！ボール＋1";
+        maxBalls++; 
+        ballCountDisplay.innerText = maxBalls;
+        setTimeout(closeQuizModal, 800);
+    } else {
+        quizResult.style.color = "#ff3333";
+        const displayUserAnswer = userAnswer === "" ? "未入力" : userAnswer;
+        quizResult.innerText = `❌ 不正解！\nあなたの回答: 「${displayUserAnswer}」\n正解は「${currentQuiz.a}」`;
+        setTimeout(closeQuizModal, 3000);
+    }
+}
+
+function closeQuizModal() {
+    quizModal.style.display = "none";
+}
+retryBtn.addEventListener("click", initGame);
+
+function createBlock(c, r) {
+    const rand = Math.random();
+    if (rand > 0.35) {
+        const baseHp = totalRowsSpawned;
+        let calculatedHp = Math.floor(Math.random() * 3) + baseHp; 
+        
+        const bonusHp = Math.floor(calculatedHp / 5);
+        calculatedHp += bonusHp;
+
+        bricks[c][r] = { type: "block", hp: calculatedHp };
+    } else {
+        bricks[c][r] = { type: "block", hp: 0 };
+    }
+}
+
+canvas.addEventListener("mousedown", startAim, false);
+canvas.addEventListener("touchstart", (e) => startAim(e.touches[0]), false);
+canvas.addEventListener("mousemove", moveAim, false);
+canvas.addEventListener("touchmove", (e) => moveAim(e.touches[0]), false);
+canvas.addEventListener("mouseup", endAim, false);
+canvas.addEventListener("touchend", endAim, false);
+
+function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function startAim(e) {
+    if (gameOver || isBallMoving || quizModal.style.display === "block") return; 
+    isAiming = true;
+    const pos = getCanvasPos(e);
+    updateAimTarget(pos.x, pos.y);
+}
+
+function moveAim(e) {
+    if (!isAiming || gameOver) return;
+    const pos = getCanvasPos(e);
+    updateAimTarget(pos.x, pos.y);
+}
+
+function updateAimTarget(x, y) {
+    if (y >= startY) {
+        aimY = startY - 5;
+    } else {
+        aimY = y;
+    }
+    aimX = x;
+}
+
+function endAim() {
+    if (!isAiming || gameOver) return;
+    isAiming = false;
+
+    const diffX = aimX - startX;
+    const diffY = aimY - startY; 
+    const distance = Math.sqrt(diffX * diffX + diffY * diffY);
+    if (distance > 0) {
+        let targetDx = (diffX / distance) * ballSpeed;
+        let targetDy = (diffY / distance) * ballSpeed;
+        
+        if (Math.abs(targetDy) < 1.5) {
+            targetDy = -1.5;
+        }
+
+        balls = [];
+        isBallMoving = true; 
+        quizTriggerBtn.disabled = true;
+        for (let i = 0; i < maxBalls; i++) {
+            balls.push({ 
+                x: startX, 
+                y: startY, 
+                dx: targetDx, 
+                dy: targetDy, 
+                active: false
+            });
+        }
+        balls[0].active = true; 
+        launchDelayCounter = 0;
+    }
+}
+
+function spawnNewRow() {
+    totalRowsSpawned++; 
+    for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c].unshift({});
+        createBlock(c, 0); 
+    }
+    
+    items.forEach(item => {
+        if(item.active) item.y += (brickSize + brickPadding);
+    });
+}
+
+/* --- ゲームオーバー処理の共通関数 --- */
+function triggerGameOver() {
+    gameOver = true;
+    document.getElementById("gameover-score").innerText = score;
+    checkAndSaveHighScore();
+    gameMainContent.classList.add("blur-active");
+    gameoverOverlay.style.display = "flex";
+    quizTriggerBtn.disabled = true;
+    giveupBtn.disabled = true;
+    closeQuizModal();
+}
+
+function checkLinesStatus() {
+    let currentInWarningZone = false; 
+    let checkGameOver = false;
+    for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < bricks[c].length; r++) {
+            const b = bricks[c][r];
+            if (b && b.hp > 0) {
+                const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
+                if (brickY + brickSize >= warningRedLineY - 1) {
+                    currentInWarningZone = true;
+                }
+                if (brickY + brickSize >= gameoverDeadlineY - 1) {
+                    checkGameOver = true;
+                }
+            }
+        }
+    }
+
+    isWarningActive = currentInWarningZone;
+    if (isWarningActive && !isBallMoving && !lastTurnWarningState) {
+        warningTimer = 60; 
+        lastTurnWarningState = true;
+    }
+    if (isBallMoving) {
+        lastTurnWarningState = false;
+    }
+    if (!isWarningActive) {
+        lastTurnWarningState = false;
+    }
+
+    if (checkGameOver && !isBallMoving) {
+        triggerGameOver();
+    }
+}
+
+function checkSingleBrickCollision(ball, c, r) {
+    const b = bricks[c][r];
+    if (!b || b.hp <= 0) return false;
+    const brickX = c * (brickSize + brickPadding) + brickOffsetLeft;
+    const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
+    const closestX = Math.max(brickX, Math.min(ball.x, brickX + brickSize));
+    const closestY = Math.max(brickY, Math.min(ball.y, brickY + brickSize));
+    const distanceX = ball.x - closestX;
+    const distanceY = ball.y - closestY;
+    const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+    if (distanceSquared < (ballRadius * ballRadius)) {
+        const dl = Math.abs(ball.x - brickX);
+        const dr = Math.abs(ball.x - (brickX + brickSize));
+        const dt = Math.abs(ball.y - brickY);
+        const db = Math.abs(ball.y - (brickY + brickSize));
+
+        const minDist = Math.min(dl, dr, dt, db);
+        const nudge = (Math.random() - 0.5) * 0.2;
+
+        if (minDist === dl && ball.dx > 0) {
+            ball.dx = -ball.dx + nudge;
+            ball.x = brickX - ballRadius - 0.1; 
+        } else if (minDist === dr && ball.dx < 0) {
+            ball.dx = -ball.dx + nudge;
+            ball.x = brickX + brickSize + ballRadius + 0.1; 
+        } else if (minDist === dt && ball.dy > 0) {
+            ball.dy = -ball.dy + nudge;
+            ball.y = brickY - ballRadius - 0.1; 
+        } else if (minDist === db && ball.dy < 0) {
+            ball.dy = -ball.dy + nudge;
+            ball.y = brickY + brickSize + ballRadius + 0.1; 
+        } else {
+            if (Math.abs(distanceX) > Math.abs(distanceY)) {
+                ball.dx = -ball.dx + nudge;
+                ball.x += ball.dx > 0 ? 0.5 : -0.5;
+            } else {
+                ball.dy = -ball.dy + nudge;
+                ball.y += ball.dy > 0 ? 0.5 : -0.5;
+            }
+        }
+
+        if (Math.abs(ball.dy) < 0.5) {
+            ball.dy = ball.dy < 0 ? -0.5 : 0.5;
+        }
+        if (Math.abs(ball.dx) < 0.5) {
+            ball.dx = ball.dx < 0 ? -0.5 : 0.5;
+        }
+
+        const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        if (currentSpeed > 0) {
+            ball.dx = (ball.dx / currentSpeed) * ballSpeed;
+            ball.dy = (ball.dy / currentSpeed) * ballSpeed;
+        }
+
+        b.hp -= 1;
+        score += 10;
+        scoreDisplay.innerText = score;
+
+        if (b.hp <= 0) {
+            if (Math.random() < 0.01) { 
+                items.push({
+                    x: brickX + brickSize / 2,
+                    y: brickY + brickSize / 2,
+                    active: true
+                });
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+function handleItems() {
+    for (let j = 0; j < items.length; j++) {
+        let item = items[j];
+        if (!item.active) continue;
+
+        item.y += itemFallSpeed;
+
+        for (let i = 0; i < balls.length; i++) {
+            let ball = balls[i];
+            if (!ball.active) continue;
+
+            const dx = ball.x - item.x;
+            const dy = ball.y - item.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < ballRadius + itemRadius) {
+                item.active = false;
+                maxBalls++; 
+                ballCountDisplay.innerText = maxBalls;
+                break;
+            }
+        }
+
+        if (item.y > canvas.height + itemRadius) {
+            item.active = false;
+            continue;
+        }
+
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, itemRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#33ff00";
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#fff";
+        ctx.stroke();
+
+        ctx.font = "bold 13px Arial";
+        ctx.fillStyle = "#000";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("+1", item.x, item.y);
+    }
+}
+
+function handleBalls() {
+    let anyBallActive = false;
+    if (isBallMoving) {
+        launchDelayCounter++;
+        for (let i = 0; i < balls.length; i++) {
+            if (!balls[i].active && launchDelayCounter >= i * launchDelay) {
+                balls[i].active = true;
+            }
+        }
+    }
+
+    if (!isBallMoving) {
+        ctx.beginPath();
+        ctx.arc(startX, startY, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#00ffff"; 
+        ctx.fill();
+        return;
+    }
+
+    for (let i = 0; i < balls.length; i++) {
+        let ball = balls[i];
+        if (!ball.active) continue;
+
+        if (ball.y >= canvas.height - ballRadius) {
+            ball.active = false;
+            continue;
+        }
+
+        const moveDistance = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        const stepSize = 3; 
+        const steps = Math.ceil(moveDistance / stepSize);
+        
+        const stepDx = ball.dx / steps;
+        const stepDy = ball.dy / steps;
+        let hitInThisFrame = false;
+        for (let s = 0; s < steps; s++) {
+            ball.x += stepDx;
+            ball.y += stepDy;
+
+            if (ball.x > canvas.width - ballRadius) {
+                ball.dx = -Math.abs(ball.dx);
+                ball.x = canvas.width - ballRadius - 0.5;
+            } else if (ball.x < ballRadius) {
+                ball.dx = Math.abs(ball.dx);
+                ball.x = ballRadius + 0.5;
+            }
+            if (ball.y < ballRadius) {
+                ball.dy = Math.abs(ball.dy);
+                ball.y = ballRadius + 0.5;
+            }
+
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < bricks[c].length; r++) {
+                    if (checkSingleBrickCollision(ball, c, r)) {
+                        hitInThisFrame = true;
+                        break;
+                    }
+                }
+                if (hitInThisFrame) break;
+            }
+            if (hitInThisFrame) break;
+        }
+        
+        anyBallActive = true; 
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = i === 0 ? "#00ffff" : "#00ffaa"; 
+        ctx.fill();
+    }
+
+    if (isBallMoving && !anyBallActive) {
+        isBallMoving = false;
+        balls = [];          
+        spawnNewRow();        
+        hasAnsweredThisTurn = false;
+        quizTriggerBtn.disabled = false; 
+    }
+}
+
+function drawAimLine() {
+    if (!isAiming) return;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(aimX, aimY);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function drawBricks() {
+    for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < bricks[c].length; r++) {
+            const b = bricks[c][r];
+            if (b && b.hp > 0) {
+                const brickX = c * (brickSize + brickPadding) + brickOffsetLeft;
+                const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
+
+                let baseColor = "#ffff33"; let lightColor = "#ffff99";
+                let darkColor = "#999900";
+                
+                if (b.hp >= 4 && b.hp < 10) {
+                    baseColor = "#ff9900";
+                    lightColor = "#ffcc99"; darkColor = "#996600";
+                } else if (b.hp >= 10 && b.hp < 20) {
+                    baseColor = "#ff3333";
+                    lightColor = "#ff9999"; darkColor = "#990000";
+                } else if (b.hp >= 20) {
+                    baseColor = "#cc33ff";
+                    lightColor = "#ecb3ff"; darkColor = "#660099";
+                }
+
+                let gradient = ctx.createLinearGradient(brickX, brickY, brickX + brickSize, brickY + brickSize);
+                gradient.addColorStop(0, lightColor); gradient.addColorStop(1, baseColor);
+                ctx.beginPath(); ctx.rect(brickX, brickY, brickSize, brickSize); ctx.fillStyle = gradient; ctx.fill();
+
+                ctx.beginPath(); ctx.moveTo(brickX, brickY + brickSize);
+                ctx.lineTo(brickX, brickY);
+                ctx.lineTo(brickX + brickSize, brickY);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 3; ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(brickX, brickY + brickSize);
+                ctx.lineTo(brickX + brickSize, brickY + brickSize); ctx.lineTo(brickX + brickSize, brickY);
+                ctx.strokeStyle = darkColor; ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.font = "bold 16px Arial"; ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText(b.hp, brickX + brickSize / 2 + 1, brickY + brickSize / 2 + 1);
+                ctx.fillStyle = "#fff";
+                ctx.fillText(b.hp, brickX + brickSize / 2, brickY + brickSize / 2);
+            }
+        }
+    }
+}
+
+function drawEffects() {
+    ctx.beginPath();
+    ctx.moveTo(0, warningRedLineY);
+    ctx.lineTo(canvas.width, warningRedLineY);
+    ctx.strokeStyle = "rgba(255, 0, 0, 0.9)";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    if (warningTimer > 0 && !gameOver) {
+        warningTimer--; 
+        warningPulseCounter++;
+        let alpha = 0.25 + Math.sin(warningPulseCounter * 0.25) * 0.12;
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "bold 36px Arial";
+        ctx.fillStyle = `rgba(255, 51, 51, ${0.7 + Math.sin(warningPulseCounter * 0.3) * 0.3})`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("⚠️ WARNING", canvas.width / 2, warningRedLineY - 40);
+    }
+}
+
+function drawMessage(text, color) {
+    ctx.font = "bold 32px Arial"; ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2.5);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBricks();
+    drawAimLine();
+    handleBalls(); 
+    handleItems(); 
+    checkLinesStatus(); 
+    drawEffects(); 
+
+    if (gameOver) {
+        drawMessage("GAME OVER", "#ff3333");
+        return; 
+    }
+
+    requestAnimationFrame(draw);
+}
+</script>
+
+</body>
+</html>
