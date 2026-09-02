@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英単語クイズ・マルチボールブロック崩し</title>
+    <title>英単語クイズ・マルチボールブロック崩し (リアルタイムランキング版)</title>
     <style>
         body {
             margin: 0;
@@ -19,7 +19,6 @@
             user-select: none;
         }
 
-        /* 画面切り替え用の構造 */
         #home-screen {
             display: block;
             text-align: center;
@@ -30,7 +29,6 @@
             position: relative;
         }
 
-        /* 元のゲームデザインを維持するラッパー */
         #game-main-content {
             display: flex;
             flex-direction: column;
@@ -42,7 +40,6 @@
             pointer-events: none;
         }
 
-        /* ホーム（メニュー）画面のデザイン */
         .menu-container {
             width: 320px;
             padding: 30px;
@@ -72,7 +69,6 @@
             letter-spacing: 2px;
         }
 
-        /* 単語帳・ハイスコア等の独立画面共通コンテナデザイン */
         .sub-screen-container {
             width: 340px;
             padding: 25px;
@@ -81,7 +77,6 @@
             box-sizing: border-box;
         }
         
-        /* 単語帳用の個別カラー */
         .wordbook-border {
             background: rgba(25, 25, 25, 0.95);
             border: 2px solid #00ffff;
@@ -94,7 +89,6 @@
             font-weight: bold;
         }
 
-        /* ハイスコア専用画面の個別カラー */
         .highscore-border {
             background: rgba(25, 25, 25, 0.95);
             border: 2px solid #ffff33;
@@ -108,7 +102,6 @@
             letter-spacing: 1px;
         }
 
-        /* ランキング表示リスト */
         .ranking-list {
             max-height: 280px;
             overflow-y: auto;
@@ -161,7 +154,6 @@
         .word-q { color: #ffff33; font-weight: bold; }
         .word-a { color: #00ffaa; font-family: monospace; }
 
-        /* 元のUIコンテナ群 */
         #ui-container {
             position: relative;
             display: flex;
@@ -227,7 +219,6 @@
             box-shadow: none;
         }
 
-        /* プレイ中のゲーム終了ボタン */
         #giveup-btn {
             padding: 6px 14px;
             font-size: 13px;
@@ -243,7 +234,6 @@
             background: #ff5555;
         }
 
-        /* クイズ用モーダル */
         #quiz-modal {
             display: none;
             position: fixed;
@@ -296,7 +286,6 @@
             white-space: pre-line;
         }
 
-        /* キャンバスコンテナ */
         #canvas-container {
             position: relative;
             width: 400px;
@@ -311,7 +300,6 @@
             top: 0; left: 0;
         }
 
-        /* ボタン用共通スタイル */
         .menu-btn {
             width: 100%;
             padding: 12px;
@@ -349,7 +337,6 @@
             margin-bottom: 0;
         }
 
-        /* ホーム画面用の小さいアカウント削除ボタン */
         .btn-delete-small {
             margin-top: 10px;
             padding: 5px;
@@ -365,7 +352,6 @@
             color: #ff5555;
         }
 
-        /* ゲームオーバー時のレイヤー */
         #gameover-overlay {
             display: none;
             position: fixed;
@@ -512,10 +498,35 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
 <script>
+let db = null;
+let useFirebase = false;
+
+// ※Firebaseの有効なAPIキーを設定する場合は以下を書き換えてください
+const firebaseConfig = {
+    apiKey: "YOUR_FIREBASE_API_KEY",
+    authDomain: "brk-breaker-realtime.firebaseapp.com",
+    projectId: "brk-breaker-realtime",
+    storageBucket: "brk-breaker-realtime.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef123456"
+};
+
+try {
+    if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        useFirebase = true;
+    }
+} catch (e) {
+    console.warn("Firebase Init Error: LocalStorageモードで動作します。", e);
+}
+
 let playerName = "";
 
-// ログイン・四連番号入力関数
 function promptPlayerLogin() {
     let input = null;
     while (!input) {
@@ -535,7 +546,6 @@ function promptPlayerLogin() {
     document.getElementById("current-player-id").innerText = playerName;
 }
 
-// 初期ログイン実行
 promptPlayerLogin();
 
 const homeScreen = document.getElementById("home-screen");
@@ -622,20 +632,44 @@ const gameoverDeadlineY = gameOverRow * (brickSize + brickPadding) - brickPaddin
 
 let bricks = [];
 
-/* --- ランキングデータ読み込み関数 --- */
-function loadRankings() {
-    const data = localStorage.getItem("brk_breaker_rankings");
-    if (data) {
-        rankings = JSON.parse(data);
+function initRealtimeRankings() {
+    if (useFirebase && db) {
+        db.collection("rankings")
+          .orderBy("score", "desc")
+          .limit(10)
+          .onSnapshot((snapshot) => {
+              rankings = [];
+              snapshot.forEach((doc) => {
+                  rankings.push(doc.data());
+              });
+              updateRankingData();
+          }, (error) => {
+              console.warn("Firestore error. LocalStorage fallback.", error);
+              loadLocalRankings();
+          });
     } else {
-        rankings = [];
+        loadLocalRankings();
     }
-    
-    highscore = rankings.length > 0 ? rankings[0].score : 0;
-    gameHighscoreDisplay.innerText = highscore;
 }
 
-/* --- 上位10名のランキング描画 --- */
+function loadLocalRankings() {
+    try {
+        const data = localStorage.getItem("brk_breaker_rankings");
+        rankings = data ? JSON.parse(data) : [];
+    } catch (e) {
+        rankings = [];
+    }
+    updateRankingData();
+}
+
+function updateRankingData() {
+    highscore = rankings.length > 0 ? rankings[0].score : 0;
+    gameHighscoreDisplay.innerText = highscore;
+    if (highscoreScreen.style.display === "block") {
+        renderRankings();
+    }
+}
+
 function renderRankings() {
     rankingListContainer.innerHTML = "";
     if (rankings.length === 0) {
@@ -655,15 +689,38 @@ function renderRankings() {
     });
 }
 
-/* --- スコア保存処理 --- */
-function checkAndSaveHighScore() {
+async function checkAndSaveHighScore() {
     if (score <= 0) {
         saveStatusMsg.innerText = "";
         return;
     }
 
-    const existingIndex = rankings.findIndex(item => item.name === playerName);
+    if (useFirebase && db) {
+        try {
+            const userRef = db.collection("rankings").doc(playerName);
+            const doc = await userRef.get();
 
+            if (doc.exists) {
+                if (score > doc.data().score) {
+                    await userRef.set({ name: playerName, score: score });
+                    saveStatusMsg.innerText = "🎉 自己ベスト更新！";
+                } else {
+                    saveStatusMsg.innerText = "";
+                }
+            } else {
+                await userRef.set({ name: playerName, score: score });
+                saveStatusMsg.innerText = "🎉 ランキングに記録されました！";
+            }
+            return;
+        } catch (e) {
+            console.error("Firestore Save Fail:", e);
+        }
+    }
+    saveToLocalStorageFallback();
+}
+
+function saveToLocalStorageFallback() {
+    const existingIndex = rankings.findIndex(item => item.name === playerName);
     if (existingIndex !== -1) {
         if (score > rankings[existingIndex].score) {
             rankings[existingIndex].score = score;
@@ -675,28 +732,24 @@ function checkAndSaveHighScore() {
         rankings.push({ name: playerName, score: score });
         saveStatusMsg.innerText = "🎉 ランキングに記録されました！";
     }
-
     rankings.sort((a, b) => b.score - a.score);
     localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
-    loadRankings();
+    updateRankingData();
 }
 
 function escapeHTML(str) {
-    return str.replace(/[&<>'"]/g, 
+    return String(str).replace(/[&<>'"]/g, 
         tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
     );
 }
 
 window.addEventListener('storage', (e) => {
-    if (e.key === 'brk_breaker_rankings') {
-        loadRankings();
-        if (highscoreScreen.style.display === 'block') {
-            renderRankings();
-        }
+    if (e.key === 'brk_breaker_rankings' && !useFirebase) {
+        loadLocalRankings();
     }
 });
 
-loadRankings();
+initRealtimeRankings();
 
 startGameBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
@@ -721,12 +774,20 @@ closeHighscoreBtn.addEventListener("click", () => {
     homeScreen.style.display = "block";
 });
 
-deleteAccountBtn.addEventListener("click", () => {
+deleteAccountBtn.addEventListener("click", async () => {
     if (confirm(`アカウント「${playerName}」の記録を削除しますか？`)) {
+        if (useFirebase && db) {
+            try {
+                await db.collection("rankings").doc(playerName).delete();
+            } catch (e) {
+                console.error("Firestore Delete Fail:", e);
+            }
+        }
+        
         rankings = rankings.filter(item => item.name !== playerName);
         localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
-        loadRankings();
-
+        updateRankingData();
+        
         alert(`アカウント「${playerName}」を削除しました。`);
 
         setTimeout(() => {
@@ -735,7 +796,6 @@ deleteAccountBtn.addEventListener("click", () => {
     }
 });
 
-// --- ゲーム中断（ギブアップ・ゲームオーバー実行）処理 ---
 giveupBtn.addEventListener("click", () => {
     if (confirm("ゲームを終了してゲームオーバーにしますか？")) {
         triggerGameOver();
@@ -963,7 +1023,6 @@ function spawnNewRow() {
     });
 }
 
-/* --- ゲームオーバー処理の共通関数 --- */
 function triggerGameOver() {
     gameOver = true;
     document.getElementById("gameover-score").innerText = score;
