@@ -89,6 +89,7 @@
             font-weight: bold;
         }
 
+        /* --- 単語帳に合わせて光る枠線（ネオン風）を適用したスタイル --- */
         .highscore-border {
             background: rgba(25, 25, 25, 0.95);
             border: 2px solid #ffff33;
@@ -99,37 +100,59 @@
             margin-bottom: 20px;
             color: #ffff33;
             font-weight: bold;
-            letter-spacing: 1px;
         }
 
         .ranking-list {
-            max-height: 280px;
+            max-height: 300px;
             overflow-y: auto;
             margin-bottom: 20px;
+            text-align: left;
             border: 1px solid #444;
             background: #1a1a1a;
             border-radius: 8px;
-            padding: 10px;
+            padding: 4px;
         }
         .ranking-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-bottom: 1px solid #333;
-            font-size: 15px;
+            font-size: 14px;
         }
         .ranking-item:last-child {
             border-bottom: none;
         }
         .ranking-item.current-user {
-            background: rgba(0, 255, 170, 0.15);
-            border: 1px solid #00ffaa;
-            border-radius: 4px;
+            background: #2a2a2a;
+            border-radius: 6px;
         }
-        .ranking-rank { color: #ffff33; font-weight: bold; width: 45px; text-align: left; }
-        .ranking-name { color: #fff; flex-grow: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ranking-score { color: #00ffaa; font-family: monospace; font-weight: bold; }
+        .ranking-rank { 
+            color: #888; 
+            font-weight: bold; 
+            width: 40px; 
+            text-align: left; 
+        }
+        /* Top3の順位文字色 */
+        .ranking-item:nth-child(1) .ranking-rank { color: #ffd700; }
+        .ranking-item:nth-child(2) .ranking-rank { color: #c0c0c0; }
+        .ranking-item:nth-child(3) .ranking-rank { color: #cd7f32; }
+
+        .ranking-name { 
+            color: #eee; 
+            flex-grow: 1; 
+            text-align: left; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }
+        .ranking-score { 
+            color: #00ffaa; 
+            font-family: monospace; 
+            font-weight: bold; 
+            font-size: 15px;
+        }
+        /* ------------------------------------------- */
 
         .word-list {
             max-height: 300px;
@@ -332,9 +355,12 @@
             border: none;
         }
         .btn-back {
-            background: #444;
-            border: 1px solid #666;
+            background: #333;
+            border: 1px solid #555;
             margin-bottom: 0;
+        }
+        .btn-back:hover {
+            background: #444;
         }
 
         .btn-delete-small {
@@ -505,7 +531,6 @@
 let db = null;
 let useFirebase = false;
 
-// 指定されたFirebase構成を適用
 const firebaseConfig = {
   apiKey: "AIzaSyBRLsU8Qd_T5q921RQlXKj8kxqsD0CqCso",
   authDomain: "brk-breaker.firebaseapp.com",
@@ -674,7 +699,7 @@ function updateRankingData() {
 function renderRankings() {
     rankingListContainer.innerHTML = "";
     if (rankings.length === 0) {
-        rankingListContainer.innerHTML = `<div style="color:#888; padding: 10px;">記録がありません</div>`;
+        rankingListContainer.innerHTML = `<div style="color:#888; padding: 15px;">記録がありません</div>`;
         return;
     }
     rankings.forEach((item, index) => {
@@ -682,9 +707,9 @@ function renderRankings() {
         const isCurrent = item.name === playerName;
         div.className = `ranking-item ${isCurrent ? 'current-user' : ''}`;
         div.innerHTML = `
-            <span class="ranking-rank">${index + 1}位</span>
-            <span class="ranking-name">${escapeHTML(item.name)}${isCurrent ? ' (自分)' : ''}</span>
-            <span class="ranking-score">${item.score}</span>
+            <span class="ranking-rank">${index + 1}</span>
+            <span class="ranking-name">${escapeHTML(item.name)}${isCurrent ? ' <small style="color:#00ffaa; font-size:11px;">(自分)</small>' : ''}</span>
+            <span class="ranking-score">${item.score.toLocaleString()}</span>
         `;
         rankingListContainer.appendChild(div);
     });
