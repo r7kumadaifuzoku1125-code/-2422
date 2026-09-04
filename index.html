@@ -89,7 +89,6 @@
             font-weight: bold;
         }
 
-        /* --- 単語帳に合わせて光る枠線（ネオン風）を適用したスタイル --- */
         .highscore-border {
             background: rgba(25, 25, 25, 0.95);
             border: 2px solid #ffff33;
@@ -133,7 +132,6 @@
             width: 40px; 
             text-align: left; 
         }
-        /* Top3の順位文字色 */
         .ranking-item:nth-child(1) .ranking-rank { color: #ffd700; }
         .ranking-item:nth-child(2) .ranking-rank { color: #c0c0c0; }
         .ranking-item:nth-child(3) .ranking-rank { color: #cd7f32; }
@@ -152,7 +150,6 @@
             font-weight: bold; 
             font-size: 15px;
         }
-        /* ------------------------------------------- */
 
         .word-list {
             max-height: 300px;
@@ -468,7 +465,7 @@
 
 <div id="wordbook-screen">
     <div class="sub-screen-container wordbook-border">
-        <div class="wordbook-title">📖 収録英単語一覧</div>
+        <div class="wordbook-title">収録英単語一覧</div>
         <div class="word-list" id="word-list-container"></div>
         <button class="menu-btn btn-back" id="close-wordbook-btn">メニューに戻る</button>
     </div>
@@ -476,7 +473,7 @@
 
 <div id="highscore-screen">
     <div class="sub-screen-container highscore-border">
-        <div class="highscore-title">🏆 TOP 10 RANKING</div>
+        <div class="highscore-title">TOP 10 RANKING</div>
         <div class="ranking-list" id="ranking-list-container"></div>
         <button class="menu-btn btn-back" id="close-highscore-btn">メニューに戻る</button>
     </div>
@@ -729,13 +726,13 @@ async function checkAndSaveHighScore() {
             if (doc.exists) {
                 if (score > doc.data().score) {
                     await userRef.set({ name: playerName, score: score });
-                    saveStatusMsg.innerText = "🎉 自己ベスト更新！";
+                    saveStatusMsg.innerText = "自己ベスト更新！";
                 } else {
                     saveStatusMsg.innerText = "";
                 }
             } else {
                 await userRef.set({ name: playerName, score: score });
-                saveStatusMsg.innerText = "🎉 ランキングに記録されました！";
+                saveStatusMsg.innerText = "ランキングに記録されました！";
             }
             return;
         } catch (e) {
@@ -750,13 +747,13 @@ function saveToLocalStorageFallback() {
     if (existingIndex !== -1) {
         if (score > rankings[existingIndex].score) {
             rankings[existingIndex].score = score;
-            saveStatusMsg.innerText = "🎉 自己ベスト更新！";
+            saveStatusMsg.innerText = "自己ベスト更新！";
         } else {
             saveStatusMsg.innerText = "";
         }
     } else {
         rankings.push({ name: playerName, score: score });
-        saveStatusMsg.innerText = "🎉 ランキングに記録されました！";
+        saveStatusMsg.innerText = "ランキングに記録されました！";
     }
     rankings.sort((a, b) => b.score - a.score);
     localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
@@ -902,7 +899,7 @@ function generateWordbook() {
 generateWordbook();
 
 canvas.addEventListener("dblclick", () => {
-    if(!gameOver && !isBallMoving) {
+    if(!gameOver && !isBallMoving && quizModal.style.display !== "block") {
         spawnNewRow();
     }
 });
@@ -939,14 +936,14 @@ function checkAnswer() {
     const userAnswer = quizInput.value.trim().toLowerCase();
     if (userAnswer === currentQuiz.a) {
         quizResult.style.color = "#00ff00";
-        quizResult.innerText = "⭕ 正解！ボール＋1";
+        quizResult.innerText = "正解！ボール＋1";
         maxBalls++; 
         ballCountDisplay.innerText = maxBalls;
         setTimeout(closeQuizModal, 800);
     } else {
         quizResult.style.color = "#ff3333";
         const displayUserAnswer = userAnswer === "" ? "未入力" : userAnswer;
-        quizResult.innerText = `❌ 不正解！\nあなたの回答: 「${displayUserAnswer}」\n正解は「${currentQuiz.a}」`;
+        quizResult.innerText = `不正解！\nあなたの回答: 「${displayUserAnswer}」\n正解は「${currentQuiz.a}」`;
         setTimeout(closeQuizModal, 3000);
     }
 }
@@ -991,7 +988,7 @@ function startAim(e) {
 }
 
 function moveAim(e) {
-    if (!isAiming || gameOver) return;
+    if (!isAiming || gameOver || quizModal.style.display === "block") return;
     const pos = getCanvasPos(e);
     updateAimTarget(pos.x, pos.y);
 }
@@ -1006,7 +1003,7 @@ function updateAimTarget(x, y) {
 }
 
 function endAim() {
-    if (!isAiming || gameOver) return;
+    if (!isAiming || gameOver || quizModal.style.display === "block") return;
     isAiming = false;
 
     const diffX = aimX - startX;
@@ -1168,11 +1165,15 @@ function checkSingleBrickCollision(ball, c, r) {
 }
 
 function handleItems() {
+    const isPaused = quizModal.style.display === "block";
+
     for (let j = 0; j < items.length; j++) {
         let item = items[j];
         if (!item.active) continue;
 
-        item.y += itemFallSpeed;
+        if (!isPaused) {
+            item.y += itemFallSpeed;
+        }
 
         for (let i = 0; i < balls.length; i++) {
             let ball = balls[i];
@@ -1212,7 +1213,9 @@ function handleItems() {
 
 function handleBalls() {
     let anyBallActive = false;
-    if (isBallMoving) {
+    const isPaused = quizModal.style.display === "block";
+
+    if (isBallMoving && !isPaused) {
         launchDelayCounter++;
         for (let i = 0; i < balls.length; i++) {
             if (!balls[i].active && launchDelayCounter >= i * launchDelay) {
@@ -1233,44 +1236,46 @@ function handleBalls() {
         let ball = balls[i];
         if (!ball.active) continue;
 
-        if (ball.y >= canvas.height - ballRadius) {
-            ball.active = false;
-            continue;
-        }
-
-        const moveDistance = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-        const stepSize = 3; 
-        const steps = Math.ceil(moveDistance / stepSize);
-        
-        const stepDx = ball.dx / steps;
-        const stepDy = ball.dy / steps;
-        let hitInThisFrame = false;
-        for (let s = 0; s < steps; s++) {
-            ball.x += stepDx;
-            ball.y += stepDy;
-
-            if (ball.x > canvas.width - ballRadius) {
-                ball.dx = -Math.abs(ball.dx);
-                ball.x = canvas.width - ballRadius - 0.5;
-            } else if (ball.x < ballRadius) {
-                ball.dx = Math.abs(ball.dx);
-                ball.x = ballRadius + 0.5;
-            }
-            if (ball.y < ballRadius) {
-                ball.dy = Math.abs(ball.dy);
-                ball.y = ballRadius + 0.5;
+        if (!isPaused) {
+            if (ball.y >= canvas.height - ballRadius) {
+                ball.active = false;
+                continue;
             }
 
-            for (let c = 0; c < brickColumnCount; c++) {
-                for (let r = 0; r < bricks[c].length; r++) {
-                    if (checkSingleBrickCollision(ball, c, r)) {
-                        hitInThisFrame = true;
-                        break;
+            const moveDistance = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            const stepSize = 3; 
+            const steps = Math.ceil(moveDistance / stepSize);
+            
+            const stepDx = ball.dx / steps;
+            const stepDy = ball.dy / steps;
+            let hitInThisFrame = false;
+            for (let s = 0; s < steps; s++) {
+                ball.x += stepDx;
+                ball.y += stepDy;
+
+                if (ball.x > canvas.width - ballRadius) {
+                    ball.dx = -Math.abs(ball.dx);
+                    ball.x = canvas.width - ballRadius - 0.5;
+                } else if (ball.x < ballRadius) {
+                    ball.dx = Math.abs(ball.dx);
+                    ball.x = ballRadius + 0.5;
+                }
+                if (ball.y < ballRadius) {
+                    ball.dy = Math.abs(ball.dy);
+                    ball.y = ballRadius + 0.5;
+                }
+
+                for (let c = 0; c < brickColumnCount; c++) {
+                    for (let r = 0; r < bricks[c].length; r++) {
+                        if (checkSingleBrickCollision(ball, c, r)) {
+                            hitInThisFrame = true;
+                            break;
+                        }
                     }
+                    if (hitInThisFrame) break;
                 }
                 if (hitInThisFrame) break;
             }
-            if (hitInThisFrame) break;
         }
         
         anyBallActive = true; 
@@ -1281,7 +1286,7 @@ function handleBalls() {
         ctx.fill();
     }
 
-    if (isBallMoving && !anyBallActive) {
+    if (isBallMoving && !anyBallActive && !isPaused) {
         isBallMoving = false;
         balls = [];          
         spawnNewRow();        
@@ -1291,7 +1296,7 @@ function handleBalls() {
 }
 
 function drawAimLine() {
-    if (!isAiming) return;
+    if (!isAiming || quizModal.style.display === "block") return;
     ctx.beginPath();
     ctx.moveTo(startX, startY);
     ctx.lineTo(aimX, aimY);
@@ -1356,8 +1361,10 @@ function drawEffects() {
     ctx.lineWidth = 2.5;
     ctx.stroke();
     if (warningTimer > 0 && !gameOver) {
-        warningTimer--; 
-        warningPulseCounter++;
+        if (quizModal.style.display !== "block") {
+            warningTimer--; 
+            warningPulseCounter++;
+        }
         let alpha = 0.25 + Math.sin(warningPulseCounter * 0.25) * 0.12;
         ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1365,7 +1372,7 @@ function drawEffects() {
         ctx.fillStyle = `rgba(255, 51, 51, ${0.7 + Math.sin(warningPulseCounter * 0.3) * 0.3})`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("⚠️ WARNING", canvas.width / 2, warningRedLineY - 40);
+        ctx.fillText("WARNING", canvas.width / 2, warningRedLineY - 40);
     }
 }
 
