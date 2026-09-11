@@ -661,13 +661,13 @@ const DIFFICULTY_SETTINGS = {
     normal: {
         spawnProbability: 0.35,
         hpMultiplier: 1.0,
-        itemDropRate: 0.02,     // 2%に修正
+        itemDropRate: 0.02,     // 2%
         name: "NORMAL"
     },
     hard: {
         spawnProbability: 0.20, // ブロック密集
         hpMultiplier: 1.5,     // 耐久値高い
-        itemDropRate: 0.01,     // 1%に修正
+        itemDropRate: 0.01,     // 1%
         name: "HARD"
     }
 };
@@ -1169,8 +1169,8 @@ function initGame() {
     bricks = [];
     for (let c = 0; c < brickColumnCount; c++) {
         bricks[c] = [];
-        createBlock(c, 0); 
     }
+    spawnRowAtTop(); // 最初の1行を安全に生成
     
     closeQuizModal();
     requestAnimationFrame(draw);
@@ -1270,7 +1270,8 @@ function closeQuizModal() {
 }
 retryBtn.addEventListener("click", initGame);
 
-function createBlock(c, r) {
+// 1つのブロックの初期HP計算
+function calculateBlockHp() {
     const setting = DIFFICULTY_SETTINGS[selectedDifficulty];
     const rand = Math.random();
     if (rand > setting.spawnProbability) {
@@ -1280,12 +1281,32 @@ function createBlock(c, r) {
         const bonusHp = Math.floor(calculatedHp / 5);
         calculatedHp += bonusHp;
 
-        // 難易度によるHP補正
         calculatedHp = Math.max(1, Math.round(calculatedHp * setting.hpMultiplier));
+        return calculatedHp;
+    }
+    return 0;
+}
 
-        bricks[c][r] = { type: "block", hp: calculatedHp };
-    } else {
-        bricks[c][r] = { type: "block", hp: 0 };
+// 1行分をまとめて生成し、横一列埋まるのを防止する関数
+function spawnRowAtTop() {
+    let rowBlocks = [];
+    let filledCount = 0;
+
+    for (let c = 0; c < brickColumnCount; c++) {
+        let hp = calculateBlockHp();
+        if (hp > 0) filledCount++;
+        rowBlocks.push(hp);
+    }
+
+    // もし横一列すべてブロックで埋まった場合、ランダムに1つを空（HP=0）にする
+    if (filledCount === brickColumnCount) {
+        const emptyIndex = Math.floor(Math.random() * brickColumnCount);
+        rowBlocks[emptyIndex] = 0;
+    }
+
+    // 配列の先頭（最上段 r=0）へ挿入
+    for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c].unshift({ type: "block", hp: rowBlocks[c] });
     }
 }
 
@@ -1357,10 +1378,7 @@ function endAim() {
 
 function spawnNewRow() {
     totalRowsSpawned++; 
-    for (let c = 0; c < brickColumnCount; c++) {
-        bricks[c].unshift({});
-        createBlock(c, 0); 
-    }
+    spawnRowAtTop(); // 貫通防止・空き保証処理付きで新しい行を挿入
     
     items.forEach(item => {
         if(item.active) item.y += (brickSize + brickPadding);
@@ -1438,13 +1456,11 @@ function checkSingleBrickCollisionSweep(ball, startP, endP, c, r) {
     const brickX = c * (brickSize + brickPadding) + brickOffsetLeft;
     const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
 
-    // ボールの半径分拡張したAABB（ブロックの境界領域）
     const minX = brickX - ballRadius;
     const maxX = brickX + brickSize + ballRadius;
     const minY = brickY - ballRadius;
     const maxY = brickY + brickSize + ballRadius;
 
-    // 拡張領域の各辺（上下左右）
     const segments = [
         { side: 'top',    s1: { x: minX, y: minY }, s2: { x: maxX, y: minY } },
         { side: 'bottom', s1: { x: minX, y: maxY }, s2: { x: maxX, y: maxY } },
@@ -1543,11 +1559,9 @@ function handleBalls() {
                 continue;
             }
 
-            // 1フレームの移動前の位置と移動後の目標位置
             let startP = { x: ball.x, y: ball.y };
             let endP = { x: ball.x + ball.dx, y: ball.y + ball.dy };
 
-            // 壁（外枠）との反転判定
             if (endP.x > canvas.width - ballRadius) {
                 ball.dx = -Math.abs(ball.dx);
                 ball.x = canvas.width - ballRadius - 0.1;
@@ -1563,7 +1577,6 @@ function handleBalls() {
                 endP.y = ball.y;
             }
 
-            // 全ブロックの中から最も早く衝突する面を取得（レイキャスティング）
             let earliestHit = null;
             for (let c = 0; c < brickColumnCount; c++) {
                 for (let r = 0; r < bricks[c].length; r++) {
@@ -1577,13 +1590,11 @@ function handleBalls() {
             }
 
             if (earliestHit) {
-                // 衝突位置までボールを移動させる
                 ball.x = startP.x + (endP.x - startP.x) * earliestHit.t;
                 ball.y = startP.y + (endP.y - startP.y) * earliestHit.t;
 
                 const nudge = (Math.random() - 0.5) * 0.2;
 
-                // 反射処理
                 if (earliestHit.side === 'left' || earliestHit.side === 'right') {
                     ball.dx = -ball.dx + nudge;
                     if (earliestHit.side === 'left') ball.x = earliestHit.brickX - ballRadius - 0.2;
@@ -1594,23 +1605,19 @@ function handleBalls() {
                     if (earliestHit.side === 'bottom') ball.y = earliestHit.brickY + brickSize + ballRadius + 0.2;
                 }
 
-                // 速度最小値の保証
                 if (Math.abs(ball.dy) < 0.5) ball.dy = ball.dy < 0 ? -0.5 : 0.5;
                 if (Math.abs(ball.dx) < 0.5) ball.dx = ball.dx < 0 ? -0.5 : 0.5;
 
-                // 速度の正規化
                 const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
                 if (currentSpeed > 0) {
                     ball.dx = (ball.dx / currentSpeed) * ballSpeed;
                     ball.dy = (ball.dy / currentSpeed) * ballSpeed;
                 }
 
-                // ダメージ処理
                 earliestHit.b.hp -= 1;
                 score += 10;
                 scoreDisplay.innerText = score;
 
-                // アイテムドロップ判定
                 if (earliestHit.b.hp <= 0) {
                     const dropRate = DIFFICULTY_SETTINGS[selectedDifficulty].itemDropRate;
                     if (Math.random() < dropRate) { 
@@ -1622,7 +1629,6 @@ function handleBalls() {
                     }
                 }
             } else {
-                // 衝突しない場合はそのまま目標位置へ移動
                 ball.x = endP.x;
                 ball.y = endP.y;
             }
