@@ -22,7 +22,7 @@
         #home-screen {
             display: block;
             text-align: center;
-            margin-top: 60px;
+            margin-top: 40px;
         }
         #game-screen, #wordbook-screen, #highscore-screen {
             display: none;
@@ -69,6 +69,87 @@
             letter-spacing: 2px;
         }
 
+        /* 難易度選択スタイリング */
+        .difficulty-container {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .difficulty-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 6px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .difficulty-selector {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        .diff-btn {
+            flex: 1;
+            padding: 8px 0;
+            font-size: 13px;
+            font-weight: bold;
+            background: #222;
+            color: #888;
+            border: 1px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .diff-btn.active[data-diff="easy"] {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+        .diff-btn.active[data-diff="normal"] {
+            background: #ffc107;
+            color: #111;
+            border-color: #ffc107;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+        .diff-btn.active[data-diff="hard"] {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+
+        /* ランキングタブスタイリング */
+        .tab-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 12px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            font-size: 12px;
+            font-weight: bold;
+            background: #222;
+            color: #888;
+            border: 1px solid #444;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+        }
+        .tab-btn.active[data-tab="easy"] {
+            background: #28a745;
+            color: #fff;
+            border-color: #28a745;
+        }
+        .tab-btn.active[data-tab="normal"] {
+            background: #ffc107;
+            color: #111;
+            border-color: #ffc107;
+        }
+        .tab-btn.active[data-tab="hard"] {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+        }
+
         .sub-screen-container {
             width: 340px;
             padding: 25px;
@@ -95,20 +176,20 @@
             box-shadow: 0 0 30px rgba(255, 255, 51, 0.2);
         }
         .highscore-title {
-            font-size: 22px;
-            margin-bottom: 20px;
+            font-size: 20px;
+            margin-bottom: 15px;
             color: #ffff33;
             font-weight: bold;
         }
 
         .ranking-list {
-            max-height: 300px;
+            max-height: 280px;
             overflow-y: auto;
             margin-bottom: 20px;
             text-align: left;
             border: 1px solid #444;
             background: #1a1a1a;
-            border-radius: 8px;
+            border-radius: 0 0 8px 8px;
             padding: 4px;
         }
         .ranking-item {
@@ -184,9 +265,9 @@
             width: 400px;
         }
         #info {
-            font-size: 16px;
+            font-size: 15px;
             width: 100%;
-            padding-right: 120px;
+            padding-right: 140px;
             box-sizing: border-box;
             text-align: left;
             padding-left: 10px;
@@ -195,10 +276,11 @@
             position: absolute;
             top: 2px;
             right: 10px;
-            font-size: 14px;
+            font-size: 13px;
             color: #ffff33;
             font-weight: bold;
             text-shadow: 0 0 5px rgba(255, 255, 51, 0.5);
+            text-align: right;
         }
         
         .action-btn-group {
@@ -455,6 +537,15 @@
         <div class="player-display">PLAYER: <span id="current-player-id">----</span></div>
         <div class="menu-subtitle">MULTIBALL & QUIZ</div>
         
+        <div class="difficulty-container">
+            <div class="difficulty-label">DIFFICULTY SELECT</div>
+            <div class="difficulty-selector">
+                <button class="diff-btn" data-diff="easy">EASY</button>
+                <button class="diff-btn active" data-diff="normal">NORMAL</button>
+                <button class="diff-btn" data-diff="hard">HARD</button>
+            </div>
+        </div>
+
         <button class="menu-btn btn-start" id="start-game-btn">ゲームスタート</button>
         <button class="menu-btn btn-wordbook" id="open-wordbook-btn">単語帳を見る</button>
         <button class="menu-btn btn-highscore" id="open-highscore-btn">ランキングを見る</button>
@@ -474,6 +565,11 @@
 <div id="highscore-screen">
     <div class="sub-screen-container highscore-border">
         <div class="highscore-title">TOP 10 RANKING</div>
+        <div class="tab-container">
+            <button class="tab-btn" data-tab="easy">EASY</button>
+            <button class="tab-btn active" data-tab="normal">NORMAL</button>
+            <button class="tab-btn" data-tab="hard">HARD</button>
+        </div>
         <div class="ranking-list" id="ranking-list-container"></div>
         <button class="menu-btn btn-back" id="close-highscore-btn">メニューに戻る</button>
     </div>
@@ -493,7 +589,10 @@
 
     <div id="game-main-content">
         <div id="ui-container">
-            <div id="game-highscore-container">HI-SCORE: <span id="game-highscore">0</span></div>
+            <div id="game-highscore-container">
+                <div>[<span id="game-difficulty-display">NORMAL</span>]</div>
+                HI-SCORE: <span id="game-highscore">0</span>
+            </div>
             <div id="info">SCORE: <span id="score">0</span> | BALLS: <span id="ballCount">1</span></div>
             <div class="action-btn-group">
                 <button id="quiz-trigger-btn">ボール ＋1</button>
@@ -549,11 +648,34 @@ try {
 }
 
 let playerName = "";
+let selectedDifficulty = "normal"; // easy, normal, hard
+let viewRankingDifficulty = "normal"; // ランキング画面の現在タブ
+
+const DIFFICULTY_SETTINGS = {
+    easy: {
+        spawnProbability: 0.50, // ブロックなし生成率アップ
+        hpMultiplier: 0.7,     // 耐久値が低い
+        itemDropRate: 0.05,     // アイテムドロップ高め
+        name: "EASY"
+    },
+    normal: {
+        spawnProbability: 0.35,
+        hpMultiplier: 1.0,
+        itemDropRate: 0.02,     // 2%に修正
+        name: "NORMAL"
+    },
+    hard: {
+        spawnProbability: 0.20, // ブロック密集
+        hpMultiplier: 1.5,     // 耐久値高い
+        itemDropRate: 0.01,     // 1%に修正
+        name: "HARD"
+    }
+};
 
 function promptPlayerLogin() {
     let input = null;
     while (!input) {
-        let res = prompt("4桁の番号を入力してください（登録済みの番号を入力するとログインできます）");
+        let res = prompt("4連番号を入力してください");
         if (res !== null) {
             res = res.trim();
             if (res.length > 0) {
@@ -587,6 +709,7 @@ const giveupBtn = document.getElementById("giveup-btn");
 const backToMenuBtn = document.getElementById("back-to-menu-btn");
 const gameoverOverlay = document.getElementById("gameover-overlay");
 const gameHighscoreDisplay = document.getElementById("game-highscore");
+const gameDifficultyDisplay = document.getElementById("game-difficulty-display");
 const rankingListContainer = document.getElementById("ranking-list-container");
 const saveStatusMsg = document.getElementById("save-status-msg");
 
@@ -608,7 +731,7 @@ const quizResult = document.getElementById("quiz-result");
 
 let score = 0;
 let highscore = 0;
-let rankings = [];
+let rankingsByDiff = { easy: [], normal: [], hard: [] };
 let gameOver = false;
 let isBallMoving = false; 
 let maxBalls = 1; 
@@ -655,39 +778,172 @@ const gameoverDeadlineY = gameOverRow * (brickSize + brickPadding) - brickPaddin
 
 let bricks = [];
 
+// 難易度選択UIのイベントリスナー
+document.querySelectorAll(".diff-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+        selectedDifficulty = e.target.getAttribute("data-diff");
+        updateRankingData();
+    });
+});
+
+// ランキングタブ切替のイベントリスナー
+document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+        viewRankingDifficulty = e.target.getAttribute("data-tab");
+        renderRankings();
+    });
+});
+
+function getSaveKey() {
+    return "brk_breaker_saved_game_" + playerName;
+}
+
+function saveGameState() {
+    if (gameOver) {
+        clearGameState();
+        return;
+    }
+    const saveData = {
+        score: score,
+        maxBalls: maxBalls,
+        totalRowsSpawned: totalRowsSpawned,
+        hasAnsweredThisTurn: hasAnsweredThisTurn,
+        bricks: bricks,
+        items: items,
+        difficulty: selectedDifficulty
+    };
+    localStorage.setItem(getSaveKey(), JSON.stringify(saveData));
+}
+
+function loadGameState() {
+    const raw = localStorage.getItem(getSaveKey());
+    if (!raw) return false;
+    try {
+        const data = JSON.parse(raw);
+        score = data.score || 0;
+        maxBalls = data.maxBalls || 1;
+        totalRowsSpawned = data.totalRowsSpawned || 1;
+        hasAnsweredThisTurn = !!data.hasAnsweredThisTurn;
+        bricks = data.bricks || [];
+        items = data.items || [];
+        selectedDifficulty = data.difficulty || "normal";
+        return true;
+    } catch (e) {
+        console.error("Failed to load saved state", e);
+        return false;
+    }
+}
+
+function clearGameState() {
+    localStorage.removeItem(getSaveKey());
+}
+
+window.addEventListener("beforeunload", () => {
+    if (gameScreen.style.display === "block" && !gameOver) {
+        saveGameState();
+    }
+});
+
+// 過去の難易度未設定データをNORMALランキングに自動移植するマイグレーション
+async function migrateOldRankings() {
+    try {
+        const oldLocal = localStorage.getItem("brk_breaker_rankings");
+        if (oldLocal) {
+            const oldList = JSON.parse(oldLocal);
+            if (Array.isArray(oldList) && oldList.length > 0) {
+                if (!rankingsByDiff.normal) rankingsByDiff.normal = [];
+                oldList.forEach(item => {
+                    const exists = rankingsByDiff.normal.some(n => n.name === item.name);
+                    if (!exists) {
+                        rankingsByDiff.normal.push({
+                            name: item.name,
+                            score: item.score,
+                            difficulty: "normal"
+                        });
+                    }
+                });
+                rankingsByDiff.normal.sort((a, b) => b.score - a.score);
+                rankingsByDiff.normal = rankingsByDiff.normal.slice(0, 10);
+                localStorage.setItem("brk_breaker_rankings_v2", JSON.stringify(rankingsByDiff));
+            }
+        }
+    } catch (e) {
+        console.warn("LocalStorage Migration Error:", e);
+    }
+
+    if (useFirebase && db) {
+        try {
+            const oldSnap = await db.collection("rankings").get();
+            if (!oldSnap.empty) {
+                const batch = db.batch();
+                oldSnap.forEach(doc => {
+                    const data = doc.data();
+                    const newRef = db.collection("rankings_v2").doc(`${doc.id}_normal`);
+                    batch.set(newRef, {
+                        name: data.name || doc.id,
+                        score: data.score || 0,
+                        difficulty: "normal"
+                    }, { merge: true });
+                });
+                await batch.commit();
+            }
+        } catch (e) {
+            console.warn("Firestore Migration Error:", e);
+        }
+    }
+}
+
 function initRealtimeRankings() {
     if (useFirebase && db) {
-        db.collection("rankings")
-          .orderBy("score", "desc")
-          .limit(10)
-          .onSnapshot((snapshot) => {
-              rankings = [];
+        db.collection("rankings_v2")
+          .onSnapshot(async (snapshot) => {
+              rankingsByDiff = { easy: [], normal: [], hard: [] };
               snapshot.forEach((doc) => {
-                  rankings.push(doc.data());
+                  const data = doc.data();
+                  const diff = data.difficulty || "normal";
+                  if (rankingsByDiff[diff]) {
+                      rankingsByDiff[diff].push(data);
+                  }
               });
+              
+              Object.keys(rankingsByDiff).forEach(diff => {
+                  rankingsByDiff[diff].sort((a, b) => b.score - a.score);
+                  rankingsByDiff[diff] = rankingsByDiff[diff].slice(0, 10);
+              });
+
+              await migrateOldRankings();
               updateRankingData();
-          }, (error) => {
+          }, async (error) => {
               console.warn("Firestore error. LocalStorage fallback.", error);
               loadLocalRankings();
+              await migrateOldRankings();
+              updateRankingData();
           });
     } else {
         loadLocalRankings();
+        migrateOldRankings().then(() => updateRankingData());
     }
 }
 
 function loadLocalRankings() {
     try {
-        const data = localStorage.getItem("brk_breaker_rankings");
-        rankings = data ? JSON.parse(data) : [];
+        const data = localStorage.getItem("brk_breaker_rankings_v2");
+        rankingsByDiff = data ? JSON.parse(data) : { easy: [], normal: [], hard: [] };
     } catch (e) {
-        rankings = [];
+        rankingsByDiff = { easy: [], normal: [], hard: [] };
     }
     updateRankingData();
 }
 
 function updateRankingData() {
-    highscore = rankings.length > 0 ? rankings[0].score : 0;
+    const currentDiffList = rankingsByDiff[selectedDifficulty] || [];
+    highscore = currentDiffList.length > 0 ? currentDiffList[0].score : 0;
     gameHighscoreDisplay.innerText = highscore;
+    gameDifficultyDisplay.innerText = DIFFICULTY_SETTINGS[selectedDifficulty].name;
     if (highscoreScreen.style.display === "block") {
         renderRankings();
     }
@@ -695,11 +951,12 @@ function updateRankingData() {
 
 function renderRankings() {
     rankingListContainer.innerHTML = "";
-    if (rankings.length === 0) {
-        rankingListContainer.innerHTML = `<div style="color:#888; padding: 15px;">記録がありません</div>`;
+    const currentList = rankingsByDiff[viewRankingDifficulty] || [];
+    if (currentList.length === 0) {
+        rankingListContainer.innerHTML = `<div style="color:#888; padding: 15px; text-align:center;">記録がありません</div>`;
         return;
     }
-    rankings.forEach((item, index) => {
+    currentList.forEach((item, index) => {
         const div = document.createElement("div");
         const isCurrent = item.name === playerName;
         div.className = `ranking-item ${isCurrent ? 'current-user' : ''}`;
@@ -718,20 +975,22 @@ async function checkAndSaveHighScore() {
         return;
     }
 
+    const docId = `${playerName}_${selectedDifficulty}`;
+
     if (useFirebase && db) {
         try {
-            const userRef = db.collection("rankings").doc(playerName);
+            const userRef = db.collection("rankings_v2").doc(docId);
             const doc = await userRef.get();
 
             if (doc.exists) {
                 if (score > doc.data().score) {
-                    await userRef.set({ name: playerName, score: score });
+                    await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
                     saveStatusMsg.innerText = "自己ベスト更新！";
                 } else {
                     saveStatusMsg.innerText = "";
                 }
             } else {
-                await userRef.set({ name: playerName, score: score });
+                await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
                 saveStatusMsg.innerText = "ランキングに記録されました！";
             }
             return;
@@ -743,20 +1002,24 @@ async function checkAndSaveHighScore() {
 }
 
 function saveToLocalStorageFallback() {
-    const existingIndex = rankings.findIndex(item => item.name === playerName);
+    if (!rankingsByDiff[selectedDifficulty]) rankingsByDiff[selectedDifficulty] = [];
+    const list = rankingsByDiff[selectedDifficulty];
+    const existingIndex = list.findIndex(item => item.name === playerName);
+    
     if (existingIndex !== -1) {
-        if (score > rankings[existingIndex].score) {
-            rankings[existingIndex].score = score;
+        if (score > list[existingIndex].score) {
+            list[existingIndex].score = score;
             saveStatusMsg.innerText = "自己ベスト更新！";
         } else {
             saveStatusMsg.innerText = "";
         }
     } else {
-        rankings.push({ name: playerName, score: score });
+        list.push({ name: playerName, score: score, difficulty: selectedDifficulty });
         saveStatusMsg.innerText = "ランキングに記録されました！";
     }
-    rankings.sort((a, b) => b.score - a.score);
-    localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
+    list.sort((a, b) => b.score - a.score);
+    rankingsByDiff[selectedDifficulty] = list.slice(0, 10);
+    localStorage.setItem("brk_breaker_rankings_v2", JSON.stringify(rankingsByDiff));
     updateRankingData();
 }
 
@@ -767,7 +1030,7 @@ function escapeHTML(str) {
 }
 
 window.addEventListener('storage', (e) => {
-    if (e.key === 'brk_breaker_rankings' && !useFirebase) {
+    if (e.key === 'brk_breaker_rankings_v2' && !useFirebase) {
         loadLocalRankings();
     }
 });
@@ -777,8 +1040,18 @@ initRealtimeRankings();
 startGameBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
     gameScreen.style.display = "block";
+    
+    if (localStorage.getItem(getSaveKey())) {
+        if (confirm("前回の途中からやり直しますか？")) {
+            loadGameFromSave();
+            return;
+        } else {
+            clearGameState();
+        }
+    }
     initGame();
 });
+
 openWordbookBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
     wordbookScreen.style.display = "block";
@@ -788,6 +1061,10 @@ closeWordbookBtn.addEventListener("click", () => {
     homeScreen.style.display = "block";
 });
 openHighscoreBtn.addEventListener("click", () => {
+    viewRankingDifficulty = selectedDifficulty;
+    document.querySelectorAll(".tab-btn").forEach(b => {
+        b.classList.toggle("active", b.getAttribute("data-tab") === viewRankingDifficulty);
+    });
     renderRankings();
     homeScreen.style.display = "none";
     highscoreScreen.style.display = "block";
@@ -798,17 +1075,27 @@ closeHighscoreBtn.addEventListener("click", () => {
 });
 
 deleteAccountBtn.addEventListener("click", async () => {
-    if (confirm(`アカウント「${playerName}」の記録を削除しますか？`)) {
+    if (confirm(`アカウント「${playerName}」の全難易度の記録を削除しますか？`)) {
         if (useFirebase && db) {
             try {
+                const diffs = ["easy", "normal", "hard"];
+                for (const d of diffs) {
+                    await db.collection("rankings_v2").doc(`${playerName}_${d}`).delete();
+                }
                 await db.collection("rankings").doc(playerName).delete();
             } catch (e) {
                 console.error("Firestore Delete Fail:", e);
             }
         }
         
-        rankings = rankings.filter(item => item.name !== playerName);
-        localStorage.setItem("brk_breaker_rankings", JSON.stringify(rankings));
+        clearGameState();
+        ["easy", "normal", "hard"].forEach(d => {
+            if (rankingsByDiff[d]) {
+                rankingsByDiff[d] = rankingsByDiff[d].filter(item => item.name !== playerName);
+            }
+        });
+        localStorage.setItem("brk_breaker_rankings_v2", JSON.stringify(rankingsByDiff));
+        localStorage.removeItem("brk_breaker_rankings");
         updateRankingData();
         
         alert(`アカウント「${playerName}」を削除しました。`);
@@ -826,6 +1113,7 @@ giveupBtn.addEventListener("click", () => {
 });
 
 backToMenuBtn.addEventListener("click", () => {
+    saveGameState();
     gameoverOverlay.style.display = "none";
     gameMainContent.classList.remove("blur-active");
     gameScreen.style.display = "none";
@@ -855,6 +1143,7 @@ let aimX = 0;
 let aimY = 0;
 
 function initGame() {
+    clearGameState();
     score = 0;
     maxBalls = 1;
     totalRowsSpawned = 1;
@@ -868,8 +1157,8 @@ function initGame() {
     balls = [];
     items = []; 
     
+    updateRankingData();
     scoreDisplay.innerText = score;
-    gameHighscoreDisplay.innerText = highscore;
     ballCountDisplay.innerText = maxBalls;
     gameoverOverlay.style.display = "none";
     gameMainContent.classList.remove("blur-active");
@@ -883,6 +1172,32 @@ function initGame() {
         createBlock(c, 0); 
     }
     
+    closeQuizModal();
+    requestAnimationFrame(draw);
+}
+
+function loadGameFromSave() {
+    if (!loadGameState()) {
+        initGame();
+        return;
+    }
+    gameOver = false;
+    isBallMoving = false;
+    isWarningActive = false;
+    warningTimer = 0;
+    warningPulseCounter = 0;
+    lastTurnWarningState = false;
+    balls = [];
+    
+    updateRankingData();
+    scoreDisplay.innerText = score;
+    ballCountDisplay.innerText = maxBalls;
+    gameoverOverlay.style.display = "none";
+    gameMainContent.classList.remove("blur-active");
+    quizTriggerBtn.disabled = hasAnsweredThisTurn;
+    giveupBtn.disabled = false;
+    saveStatusMsg.innerText = "";
+
     closeQuizModal();
     requestAnimationFrame(draw);
 }
@@ -901,6 +1216,7 @@ generateWordbook();
 canvas.addEventListener("dblclick", () => {
     if(!gameOver && !isBallMoving && quizModal.style.display !== "block") {
         spawnNewRow();
+        saveGameState();
     }
 });
 quizTriggerBtn.addEventListener("click", () => {
@@ -946,6 +1262,7 @@ function checkAnswer() {
         quizResult.innerText = `不正解！\nあなたの回答: 「${displayUserAnswer}」\n正解は「${currentQuiz.a}」`;
         setTimeout(closeQuizModal, 3000);
     }
+    saveGameState();
 }
 
 function closeQuizModal() {
@@ -954,13 +1271,17 @@ function closeQuizModal() {
 retryBtn.addEventListener("click", initGame);
 
 function createBlock(c, r) {
+    const setting = DIFFICULTY_SETTINGS[selectedDifficulty];
     const rand = Math.random();
-    if (rand > 0.35) {
+    if (rand > setting.spawnProbability) {
         const baseHp = totalRowsSpawned;
         let calculatedHp = Math.floor(Math.random() * 3) + baseHp; 
         
         const bonusHp = Math.floor(calculatedHp / 5);
         calculatedHp += bonusHp;
+
+        // 難易度によるHP補正
+        calculatedHp = Math.max(1, Math.round(calculatedHp * setting.hpMultiplier));
 
         bricks[c][r] = { type: "block", hp: calculatedHp };
     } else {
@@ -1048,6 +1369,7 @@ function spawnNewRow() {
 
 function triggerGameOver() {
     gameOver = true;
+    clearGameState();
     document.getElementById("gameover-score").innerText = score;
     checkAndSaveHighScore();
     gameMainContent.classList.add("blur-active");
@@ -1092,76 +1414,55 @@ function checkLinesStatus() {
     }
 }
 
-function checkSingleBrickCollision(ball, c, r) {
+// ボールと線分の交差判定（貫通防止用レイキャスト）
+function checkRaySegmentIntersection(p1, p2, s1, s2) {
+    const dx1 = p2.x - p1.x;
+    const dy1 = p2.y - p1.y;
+    const dx2 = s2.x - s1.x;
+    const dy2 = s2.y - s1.y;
+    const denom = dx1 * dy2 - dy1 * dx2;
+    if (denom === 0) return null;
+    const t = ((s1.x - p1.x) * dy2 - (s1.y - p1.y) * dx2) / denom;
+    const u = ((s1.x - p1.x) * dy1 - (s1.y - p1.y) * dx1) / denom;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        return t;
+    }
+    return null;
+}
+
+// 1つのブロックに対するボールの移動軌跡の当たり判定
+function checkSingleBrickCollisionSweep(ball, startP, endP, c, r) {
     const b = bricks[c][r];
-    if (!b || b.hp <= 0) return false;
+    if (!b || b.hp <= 0) return null;
+
     const brickX = c * (brickSize + brickPadding) + brickOffsetLeft;
     const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
-    const closestX = Math.max(brickX, Math.min(ball.x, brickX + brickSize));
-    const closestY = Math.max(brickY, Math.min(ball.y, brickY + brickSize));
-    const distanceX = ball.x - closestX;
-    const distanceY = ball.y - closestY;
-    const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
-    if (distanceSquared < (ballRadius * ballRadius)) {
-        const dl = Math.abs(ball.x - brickX);
-        const dr = Math.abs(ball.x - (brickX + brickSize));
-        const dt = Math.abs(ball.y - brickY);
-        const db = Math.abs(ball.y - (brickY + brickSize));
 
-        const minDist = Math.min(dl, dr, dt, db);
-        const nudge = (Math.random() - 0.5) * 0.2;
+    // ボールの半径分拡張したAABB（ブロックの境界領域）
+    const minX = brickX - ballRadius;
+    const maxX = brickX + brickSize + ballRadius;
+    const minY = brickY - ballRadius;
+    const maxY = brickY + brickSize + ballRadius;
 
-        if (minDist === dl && ball.dx > 0) {
-            ball.dx = -ball.dx + nudge;
-            ball.x = brickX - ballRadius - 0.1; 
-        } else if (minDist === dr && ball.dx < 0) {
-            ball.dx = -ball.dx + nudge;
-            ball.x = brickX + brickSize + ballRadius + 0.1; 
-        } else if (minDist === dt && ball.dy > 0) {
-            ball.dy = -ball.dy + nudge;
-            ball.y = brickY - ballRadius - 0.1; 
-        } else if (minDist === db && ball.dy < 0) {
-            ball.dy = -ball.dy + nudge;
-            ball.y = brickY + brickSize + ballRadius + 0.1; 
-        } else {
-            if (Math.abs(distanceX) > Math.abs(distanceY)) {
-                ball.dx = -ball.dx + nudge;
-                ball.x += ball.dx > 0 ? 0.5 : -0.5;
-            } else {
-                ball.dy = -ball.dy + nudge;
-                ball.y += ball.dy > 0 ? 0.5 : -0.5;
+    // 拡張領域の各辺（上下左右）
+    const segments = [
+        { side: 'top',    s1: { x: minX, y: minY }, s2: { x: maxX, y: minY } },
+        { side: 'bottom', s1: { x: minX, y: maxY }, s2: { x: maxX, y: maxY } },
+        { side: 'left',   s1: { x: minX, y: minY }, s2: { x: minX, y: maxY } },
+        { side: 'right',  s1: { x: maxX, y: minY }, s2: { x: maxX, y: maxY } }
+    ];
+
+    let earliest = null;
+
+    for (const seg of segments) {
+        const t = checkRaySegmentIntersection(startP, endP, seg.s1, seg.s2);
+        if (t !== null) {
+            if (earliest === null || t < earliest.t) {
+                earliest = { t, side: seg.side, c, r, brickX, brickY, b };
             }
         }
-
-        if (Math.abs(ball.dy) < 0.5) {
-            ball.dy = ball.dy < 0 ? -0.5 : 0.5;
-        }
-        if (Math.abs(ball.dx) < 0.5) {
-            ball.dx = ball.dx < 0 ? -0.5 : 0.5;
-        }
-
-        const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-        if (currentSpeed > 0) {
-            ball.dx = (ball.dx / currentSpeed) * ballSpeed;
-            ball.dy = (ball.dy / currentSpeed) * ballSpeed;
-        }
-
-        b.hp -= 1;
-        score += 10;
-        scoreDisplay.innerText = score;
-
-        if (b.hp <= 0) {
-            if (Math.random() < 0.01) { 
-                items.push({
-                    x: brickX + brickSize / 2,
-                    y: brickY + brickSize / 2,
-                    active: true
-                });
-            }
-        }
-        return true;
     }
-    return false;
+    return earliest;
 }
 
 function handleItems() {
@@ -1242,39 +1543,88 @@ function handleBalls() {
                 continue;
             }
 
-            const moveDistance = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-            const stepSize = 3; 
-            const steps = Math.ceil(moveDistance / stepSize);
-            
-            const stepDx = ball.dx / steps;
-            const stepDy = ball.dy / steps;
-            let hitInThisFrame = false;
-            for (let s = 0; s < steps; s++) {
-                ball.x += stepDx;
-                ball.y += stepDy;
+            // 1フレームの移動前の位置と移動後の目標位置
+            let startP = { x: ball.x, y: ball.y };
+            let endP = { x: ball.x + ball.dx, y: ball.y + ball.dy };
 
-                if (ball.x > canvas.width - ballRadius) {
-                    ball.dx = -Math.abs(ball.dx);
-                    ball.x = canvas.width - ballRadius - 0.5;
-                } else if (ball.x < ballRadius) {
-                    ball.dx = Math.abs(ball.dx);
-                    ball.x = ballRadius + 0.5;
-                }
-                if (ball.y < ballRadius) {
-                    ball.dy = Math.abs(ball.dy);
-                    ball.y = ballRadius + 0.5;
-                }
+            // 壁（外枠）との反転判定
+            if (endP.x > canvas.width - ballRadius) {
+                ball.dx = -Math.abs(ball.dx);
+                ball.x = canvas.width - ballRadius - 0.1;
+                endP.x = ball.x;
+            } else if (endP.x < ballRadius) {
+                ball.dx = Math.abs(ball.dx);
+                ball.x = ballRadius + 0.1;
+                endP.x = ball.x;
+            }
+            if (endP.y < ballRadius) {
+                ball.dy = Math.abs(ball.dy);
+                ball.y = ballRadius + 0.1;
+                endP.y = ball.y;
+            }
 
-                for (let c = 0; c < brickColumnCount; c++) {
-                    for (let r = 0; r < bricks[c].length; r++) {
-                        if (checkSingleBrickCollision(ball, c, r)) {
-                            hitInThisFrame = true;
-                            break;
+            // 全ブロックの中から最も早く衝突する面を取得（レイキャスティング）
+            let earliestHit = null;
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < bricks[c].length; r++) {
+                    const hit = checkSingleBrickCollisionSweep(ball, startP, endP, c, r);
+                    if (hit) {
+                        if (earliestHit === null || hit.t < earliestHit.t) {
+                            earliestHit = hit;
                         }
                     }
-                    if (hitInThisFrame) break;
                 }
-                if (hitInThisFrame) break;
+            }
+
+            if (earliestHit) {
+                // 衝突位置までボールを移動させる
+                ball.x = startP.x + (endP.x - startP.x) * earliestHit.t;
+                ball.y = startP.y + (endP.y - startP.y) * earliestHit.t;
+
+                const nudge = (Math.random() - 0.5) * 0.2;
+
+                // 反射処理
+                if (earliestHit.side === 'left' || earliestHit.side === 'right') {
+                    ball.dx = -ball.dx + nudge;
+                    if (earliestHit.side === 'left') ball.x = earliestHit.brickX - ballRadius - 0.2;
+                    if (earliestHit.side === 'right') ball.x = earliestHit.brickX + brickSize + ballRadius + 0.2;
+                } else {
+                    ball.dy = -ball.dy + nudge;
+                    if (earliestHit.side === 'top') ball.y = earliestHit.brickY - ballRadius - 0.2;
+                    if (earliestHit.side === 'bottom') ball.y = earliestHit.brickY + brickSize + ballRadius + 0.2;
+                }
+
+                // 速度最小値の保証
+                if (Math.abs(ball.dy) < 0.5) ball.dy = ball.dy < 0 ? -0.5 : 0.5;
+                if (Math.abs(ball.dx) < 0.5) ball.dx = ball.dx < 0 ? -0.5 : 0.5;
+
+                // 速度の正規化
+                const currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                if (currentSpeed > 0) {
+                    ball.dx = (ball.dx / currentSpeed) * ballSpeed;
+                    ball.dy = (ball.dy / currentSpeed) * ballSpeed;
+                }
+
+                // ダメージ処理
+                earliestHit.b.hp -= 1;
+                score += 10;
+                scoreDisplay.innerText = score;
+
+                // アイテムドロップ判定
+                if (earliestHit.b.hp <= 0) {
+                    const dropRate = DIFFICULTY_SETTINGS[selectedDifficulty].itemDropRate;
+                    if (Math.random() < dropRate) { 
+                        items.push({
+                            x: earliestHit.brickX + brickSize / 2,
+                            y: earliestHit.brickY + brickSize / 2,
+                            active: true
+                        });
+                    }
+                }
+            } else {
+                // 衝突しない場合はそのまま目標位置へ移動
+                ball.x = endP.x;
+                ball.y = endP.y;
             }
         }
         
@@ -1292,6 +1642,7 @@ function handleBalls() {
         spawnNewRow();        
         hasAnsweredThisTurn = false;
         quizTriggerBtn.disabled = false; 
+        saveGameState();
     }
 }
 
