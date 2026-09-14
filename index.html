@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英単語クイズ・マルチボールブロック崩し (リアルタイムランキング版)</title>
+    <title>英単語クイズ・マルチボールブロック崩し (Firestore完全統一版)</title>
     <style>
         body {
             margin: 0;
@@ -624,9 +624,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
 <script>
-let db = null;
-let useFirebase = false;
-
 const firebaseConfig = {
   apiKey: "AIzaSyBRLsU8Qd_T5q921RQlXKj8kxqsD0CqCso",
   authDomain: "brk-breaker.firebaseapp.com",
@@ -637,15 +634,8 @@ const firebaseConfig = {
   measurementId: "G-1TFXPTXRPN"
 };
 
-try {
-    if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        useFirebase = true;
-    }
-} catch (e) {
-    console.warn("Firebase Init Error: LocalStorageモードで動作します。", e);
-}
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 let playerName = "";
 let selectedDifficulty = "normal"; // easy, normal, hard
@@ -653,21 +643,21 @@ let viewRankingDifficulty = "normal"; // ランキング画面の現在タブ
 
 const DIFFICULTY_SETTINGS = {
     easy: {
-        spawnProbability: 0.50, // ブロックなし生成率アップ
-        hpMultiplier: 0.7,     // 耐久値が低い
-        itemDropRate: 0.05,     // アイテムドロップ高め
+        spawnProbability: 0.50,
+        hpMultiplier: 0.7,
+        itemDropRate: 0.05,
         name: "EASY"
     },
     normal: {
         spawnProbability: 0.35,
         hpMultiplier: 1.0,
-        itemDropRate: 0.02,     // 2%
+        itemDropRate: 0.02,
         name: "NORMAL"
     },
     hard: {
-        spawnProbability: 0.20, // ブロック密集
-        hpMultiplier: 1.5,     // 耐久値高い
-        itemDropRate: 0.01,     // 1%
+        spawnProbability: 0.20,
+        hpMultiplier: 1.5,
+        itemDropRate: 0.01,
         name: "HARD"
     }
 };
@@ -798,13 +788,9 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
-function getSaveKey() {
-    return "brk_breaker_saved_game_" + playerName;
-}
-
-function saveGameState() {
+async function saveGameState() {
     if (gameOver) {
-        clearGameState();
+        await clearGameState();
         return;
     }
     const saveData = {
@@ -814,16 +800,22 @@ function saveGameState() {
         hasAnsweredThisTurn: hasAnsweredThisTurn,
         bricks: bricks,
         items: items,
-        difficulty: selectedDifficulty
+        difficulty: selectedDifficulty,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
-    localStorage.setItem(getSaveKey(), JSON.stringify(saveData));
+    try {
+        await db.collection("game_states").doc(playerName).set(saveData);
+    } catch (e) {
+        console.error("Firestore Save Game State Error:", e);
+    }
 }
 
-function loadGameState() {
-    const raw = localStorage.getItem(getSaveKey());
-    if (!raw) return false;
+async function loadGameState() {
     try {
-        const data = JSON.parse(raw);
+        const doc = await db.collection("game_states").doc(playerName).get();
+        if (!doc.exists) return false;
+        
+        const data = doc.data();
         score = data.score || 0;
         maxBalls = data.maxBalls || 1;
         totalRowsSpawned = data.totalRowsSpawned || 1;
@@ -833,13 +825,17 @@ function loadGameState() {
         selectedDifficulty = data.difficulty || "normal";
         return true;
     } catch (e) {
-        console.error("Failed to load saved state", e);
+        console.error("Firestore Load Game State Error:", e);
         return false;
     }
 }
 
-function clearGameState() {
-    localStorage.removeItem(getSaveKey());
+async function clearGameState() {
+    try {
+        await db.collection("game_states").doc(playerName).delete();
+    } catch (e) {
+        console.error("Firestore Clear Game State Error:", e);
+    }
 }
 
 window.addEventListener("beforeunload", () => {
@@ -848,95 +844,50 @@ window.addEventListener("beforeunload", () => {
     }
 });
 
-// 過去の難易度未設定データをNORMALランキングに自動移植するマイグレーション
+// 旧バージョンのFirestoreデータをV2形式にマイグレーションする処理
 async function migrateOldRankings() {
     try {
-        const oldLocal = localStorage.getItem("brk_breaker_rankings");
-        if (oldLocal) {
-            const oldList = JSON.parse(oldLocal);
-            if (Array.isArray(oldList) && oldList.length > 0) {
-                if (!rankingsByDiff.normal) rankingsByDiff.normal = [];
-                oldList.forEach(item => {
-                    const exists = rankingsByDiff.normal.some(n => n.name === item.name);
-                    if (!exists) {
-                        rankingsByDiff.normal.push({
-                            name: item.name,
-                            score: item.score,
-                            difficulty: "normal"
-                        });
-                    }
-                });
-                rankingsByDiff.normal.sort((a, b) => b.score - a.score);
-                rankingsByDiff.normal = rankingsByDiff.normal.slice(0, 10);
-                localStorage.setItem("brk_breaker_rankings_v2", JSON.stringify(rankingsByDiff));
-            }
+        const oldSnap = await db.collection("rankings").get();
+        if (!oldSnap.empty) {
+            const batch = db.batch();
+            oldSnap.forEach(doc => {
+                const data = doc.data();
+                const newRef = db.collection("rankings_v2").doc(`${doc.id}_normal`);
+                batch.set(newRef, {
+                    name: data.name || doc.id,
+                    score: data.score || 0,
+                    difficulty: "normal"
+                }, { merge: true });
+            });
+            await batch.commit();
         }
     } catch (e) {
-        console.warn("LocalStorage Migration Error:", e);
-    }
-
-    if (useFirebase && db) {
-        try {
-            const oldSnap = await db.collection("rankings").get();
-            if (!oldSnap.empty) {
-                const batch = db.batch();
-                oldSnap.forEach(doc => {
-                    const data = doc.data();
-                    const newRef = db.collection("rankings_v2").doc(`${doc.id}_normal`);
-                    batch.set(newRef, {
-                        name: data.name || doc.id,
-                        score: data.score || 0,
-                        difficulty: "normal"
-                    }, { merge: true });
-                });
-                await batch.commit();
-            }
-        } catch (e) {
-            console.warn("Firestore Migration Error:", e);
-        }
+        console.warn("Firestore Migration Error:", e);
     }
 }
 
 function initRealtimeRankings() {
-    if (useFirebase && db) {
-        db.collection("rankings_v2")
-          .onSnapshot(async (snapshot) => {
-              rankingsByDiff = { easy: [], normal: [], hard: [] };
-              snapshot.forEach((doc) => {
-                  const data = doc.data();
-                  const diff = data.difficulty || "normal";
-                  if (rankingsByDiff[diff]) {
-                      rankingsByDiff[diff].push(data);
-                  }
-              });
-              
-              Object.keys(rankingsByDiff).forEach(diff => {
-                  rankingsByDiff[diff].sort((a, b) => b.score - a.score);
-                  rankingsByDiff[diff] = rankingsByDiff[diff].slice(0, 10);
-              });
-
-              await migrateOldRankings();
-              updateRankingData();
-          }, async (error) => {
-              console.warn("Firestore error. LocalStorage fallback.", error);
-              loadLocalRankings();
-              await migrateOldRankings();
-              updateRankingData();
+    db.collection("rankings_v2")
+      .onSnapshot(async (snapshot) => {
+          rankingsByDiff = { easy: [], normal: [], hard: [] };
+          snapshot.forEach((doc) => {
+              const data = doc.data();
+              const diff = data.difficulty || "normal";
+              if (rankingsByDiff[diff]) {
+                  rankingsByDiff[diff].push(data);
+              }
           });
-    } else {
-        loadLocalRankings();
-        migrateOldRankings().then(() => updateRankingData());
-    }
-}
+          
+          Object.keys(rankingsByDiff).forEach(diff => {
+              rankingsByDiff[diff].sort((a, b) => b.score - a.score);
+              rankingsByDiff[diff] = rankingsByDiff[diff].slice(0, 10);
+          });
 
-function loadLocalRankings() {
-    try {
-        const data = localStorage.getItem("brk_breaker_rankings_v2");
-        rankingsByDiff = data ? JSON.parse(data) : { easy: [], normal: [], hard: [] };
-    } catch (e) {
-        rankingsByDiff = { easy: [], normal: [], hard: [] };
-    }
-    updateRankingData();
+          await migrateOldRankings();
+          updateRankingData();
+      }, (error) => {
+          console.error("Firestore Snapshot Error:", error);
+      });
 }
 
 function updateRankingData() {
@@ -975,50 +926,24 @@ async function checkAndSaveHighScore() {
 
     const docId = `${playerName}_${selectedDifficulty}`;
 
-    if (useFirebase && db) {
-        try {
-            const userRef = db.collection("rankings_v2").doc(docId);
-            const doc = await userRef.get();
+    try {
+        const userRef = db.collection("rankings_v2").doc(docId);
+        const doc = await userRef.get();
 
-            if (doc.exists) {
-                if (score > doc.data().score) {
-                    await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
-                    saveStatusMsg.innerText = "自己ベスト更新！";
-                } else {
-                    saveStatusMsg.innerText = "";
-                }
-            } else {
+        if (doc.exists) {
+            if (score > doc.data().score) {
                 await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
-                saveStatusMsg.innerText = "ランキングに記録されました！";
+                saveStatusMsg.innerText = "自己ベスト更新！";
+            } else {
+                saveStatusMsg.innerText = "";
             }
-            return;
-        } catch (e) {
-            console.error("Firestore Save Fail:", e);
-        }
-    }
-    saveToLocalStorageFallback();
-}
-
-function saveToLocalStorageFallback() {
-    if (!rankingsByDiff[selectedDifficulty]) rankingsByDiff[selectedDifficulty] = [];
-    const list = rankingsByDiff[selectedDifficulty];
-    const existingIndex = list.findIndex(item => item.name === playerName);
-    
-    if (existingIndex !== -1) {
-        if (score > list[existingIndex].score) {
-            list[existingIndex].score = score;
-            saveStatusMsg.innerText = "自己ベスト更新！";
         } else {
-            saveStatusMsg.innerText = "";
+            await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
+            saveStatusMsg.innerText = "ランキングに記録されました！";
         }
-    } else {
-        list.push({ name: playerName, score: score, difficulty: selectedDifficulty });
-        saveStatusMsg.innerText = "ランキングに記録されました！";
+    } catch (e) {
+        console.error("Firestore Save HighScore Error:", e);
     }
-    list.sort((a, b) => b.score - a.score);
-    rankingsByDiff[selectedDifficulty] = list.slice(0, 10);
-    localStorage.setItem("brk_breaker_rankings_v2", JSON.stringify(rankingsByDiff));
-    updateRankingData();
 }
 
 function escapeHTML(str) {
@@ -1027,26 +952,26 @@ function escapeHTML(str) {
     );
 }
 
-window.addEventListener('storage', (e) => {
-    if (e.key === 'brk_breaker_rankings_v2' && !useFirebase) {
-        loadLocalRankings();
-    }
-});
-
 initRealtimeRankings();
 
-startGameBtn.addEventListener("click", () => {
+startGameBtn.addEventListener("click", async () => {
     homeScreen.style.display = "none";
     gameScreen.style.display = "block";
     
-    if (localStorage.getItem(getSaveKey())) {
-        if (confirm("前回の途中からやり直しますか？")) {
-            loadGameFromSave();
-            return;
-        } else {
-            clearGameState();
+    try {
+        const stateDoc = await db.collection("game_states").doc(playerName).get();
+        if (stateDoc.exists) {
+            if (confirm("前回の途中からやり直しますか？")) {
+                loadGameFromSave();
+                return;
+            } else {
+                await clearGameState();
+            }
         }
+    } catch (e) {
+        console.error("Save Check Error:", e);
     }
+    
     initGame();
 });
 
@@ -1074,27 +999,16 @@ closeHighscoreBtn.addEventListener("click", () => {
 
 deleteAccountBtn.addEventListener("click", async () => {
     if (confirm(`アカウント「${playerName}」の全難易度の記録を削除しますか？`)) {
-        if (useFirebase && db) {
-            try {
-                const diffs = ["easy", "normal", "hard"];
-                for (const d of diffs) {
-                    await db.collection("rankings_v2").doc(`${playerName}_${d}`).delete();
-                }
-                await db.collection("rankings").doc(playerName).delete();
-            } catch (e) {
-                console.error("Firestore Delete Fail:", e);
+        try {
+            const diffs = ["easy", "normal", "hard"];
+            for (const d of diffs) {
+                await db.collection("rankings_v2").doc(`${playerName}_${d}`).delete();
             }
+            await db.collection("rankings").doc(playerName).delete();
+            await clearGameState();
+        } catch (e) {
+            console.error("Firestore Delete Fail:", e);
         }
-        
-        clearGameState();
-        ["easy", "normal", "hard"].forEach(d => {
-            if (rankingsByDiff[d]) {
-                rankingsByDiff[d] = rankingsByDiff[d].filter(item => item.name !== playerName);
-            }
-        });
-        localStorage.setItem("brk_breaker_rankings_v2", JSON.stringify(rankingsByDiff));
-        localStorage.removeItem("brk_breaker_rankings");
-        updateRankingData();
         
         alert(`アカウント「${playerName}」を削除しました。`);
 
@@ -1168,14 +1082,15 @@ function initGame() {
     for (let c = 0; c < brickColumnCount; c++) {
         bricks[c] = [];
     }
-    spawnRowAtTop(); // 最初の1行を安全に生成
+    spawnRowAtTop();
     
     closeQuizModal();
     requestAnimationFrame(draw);
 }
 
-function loadGameFromSave() {
-    if (!loadGameState()) {
+async function loadGameFromSave() {
+    const success = await loadGameState();
+    if (!success) {
         initGame();
         return;
     }
@@ -1268,7 +1183,6 @@ function closeQuizModal() {
 }
 retryBtn.addEventListener("click", initGame);
 
-// 1つのブロックの初期HP計算
 function calculateBlockHp() {
     const setting = DIFFICULTY_SETTINGS[selectedDifficulty];
     const rand = Math.random();
@@ -1285,7 +1199,6 @@ function calculateBlockHp() {
     return 0;
 }
 
-// 1行分をまとめて生成し、横一列埋まるのを防止する関数
 function spawnRowAtTop() {
     let rowBlocks = [];
     let filledCount = 0;
@@ -1296,13 +1209,11 @@ function spawnRowAtTop() {
         rowBlocks.push(hp);
     }
 
-    // もし横一列すべてブロックで埋まった場合、ランダムに1つを空（HP=0）にする
     if (filledCount === brickColumnCount) {
         const emptyIndex = Math.floor(Math.random() * brickColumnCount);
         rowBlocks[emptyIndex] = 0;
     }
 
-    // 配列の先頭（最上段 r=0）へ挿入
     for (let c = 0; c < brickColumnCount; c++) {
         bricks[c].unshift({ type: "block", hp: rowBlocks[c] });
     }
@@ -1376,7 +1287,7 @@ function endAim() {
 
 function spawnNewRow() {
     totalRowsSpawned++; 
-    spawnRowAtTop(); // 貫通防止・空き保証処理付きで新しい行を挿入
+    spawnRowAtTop();
     
     items.forEach(item => {
         if(item.active) item.y += (brickSize + brickPadding);
@@ -1430,7 +1341,6 @@ function checkLinesStatus() {
     }
 }
 
-// ボールと線分の交差判定（貫通防止用レイキャスト）
 function checkRaySegmentIntersection(p1, p2, s1, s2) {
     const dx1 = p2.x - p1.x;
     const dy1 = p2.y - p1.y;
@@ -1446,7 +1356,6 @@ function checkRaySegmentIntersection(p1, p2, s1, s2) {
     return null;
 }
 
-// 1つのブロックに対するボールの移動軌跡の当たり判定
 function checkSingleBrickCollisionSweep(ball, startP, endP, c, r) {
     const b = bricks[c][r];
     if (!b || b.hp <= 0) return null;
