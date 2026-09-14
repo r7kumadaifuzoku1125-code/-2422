@@ -944,9 +944,7 @@ function updateRankingData() {
     highscore = currentDiffList.length > 0 ? currentDiffList[0].score : 0;
     gameHighscoreDisplay.innerText = highscore;
     gameDifficultyDisplay.innerText = DIFFICULTY_SETTINGS[selectedDifficulty].name;
-    if (highscoreScreen.style.display === "block") {
-        renderRankings();
-    }
+    renderRankings();
 }
 
 function renderRankings() {
