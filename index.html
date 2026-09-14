@@ -550,7 +550,7 @@
         <button class="menu-btn btn-wordbook" id="open-wordbook-btn">単語帳を見る</button>
         <button class="menu-btn btn-highscore" id="open-highscore-btn">ランキングを見る</button>
         
-        <button class="btn-delete-small" id="delete-account-btn">このアカウントを削除</button>
+        <button class="btn-delete-small" id="delete-account-btn">このアカウントの記録を削除</button>
     </div>
 </div>
 
@@ -665,7 +665,7 @@ const DIFFICULTY_SETTINGS = {
 function promptPlayerLogin() {
     let input = null;
     while (!input) {
-        let res = prompt("4連番号を入力してください");
+        let res = prompt("4連番号（プレイヤー名）を入力してください");
         if (res !== null) {
             res = res.trim();
             if (res.length > 0) {
@@ -844,31 +844,9 @@ window.addEventListener("beforeunload", () => {
     }
 });
 
-// 旧バージョンのFirestoreデータをV2形式にマイグレーションする処理
-async function migrateOldRankings() {
-    try {
-        const oldSnap = await db.collection("rankings").get();
-        if (!oldSnap.empty) {
-            const batch = db.batch();
-            oldSnap.forEach(doc => {
-                const data = doc.data();
-                const newRef = db.collection("rankings_v2").doc(`${doc.id}_normal`);
-                batch.set(newRef, {
-                    name: data.name || doc.id,
-                    score: data.score || 0,
-                    difficulty: "normal"
-                }, { merge: true });
-            });
-            await batch.commit();
-        }
-    } catch (e) {
-        console.warn("Firestore Migration Error:", e);
-    }
-}
-
 function initRealtimeRankings() {
     db.collection("rankings_v2")
-      .onSnapshot(async (snapshot) => {
+      .onSnapshot((snapshot) => {
           rankingsByDiff = { easy: [], normal: [], hard: [] };
           snapshot.forEach((doc) => {
               const data = doc.data();
@@ -883,7 +861,6 @@ function initRealtimeRankings() {
               rankingsByDiff[diff] = rankingsByDiff[diff].slice(0, 10);
           });
 
-          await migrateOldRankings();
           updateRankingData();
       }, (error) => {
           console.error("Firestore Snapshot Error:", error);
@@ -925,24 +902,27 @@ async function checkAndSaveHighScore() {
     }
 
     const docId = `${playerName}_${selectedDifficulty}`;
+    saveStatusMsg.innerText = "スコア保存中...";
 
     try {
         const userRef = db.collection("rankings_v2").doc(docId);
         const doc = await userRef.get();
 
         if (doc.exists) {
-            if (score > doc.data().score) {
-                await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
-                saveStatusMsg.innerText = "自己ベスト更新！";
+            const currentRecord = doc.data().score || 0;
+            if (score > currentRecord) {
+                await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                saveStatusMsg.innerText = "★ 最高スコア更新！ ★";
             } else {
-                saveStatusMsg.innerText = "";
+                saveStatusMsg.innerText = "スコア保存完了";
             }
         } else {
-            await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty });
-            saveStatusMsg.innerText = "ランキングに記録されました！";
+            await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            saveStatusMsg.innerText = "★ ランキング初登録！ ★";
         }
     } catch (e) {
         console.error("Firestore Save HighScore Error:", e);
+        saveStatusMsg.innerText = "スコア保存失敗";
     }
 }
 
@@ -998,23 +978,19 @@ closeHighscoreBtn.addEventListener("click", () => {
 });
 
 deleteAccountBtn.addEventListener("click", async () => {
-    if (confirm(`アカウント「${playerName}」の全難易度の記録を削除しますか？`)) {
+    if (confirm(`アカウント「${playerName}」のスコア記録をすべて削除しますか？`)) {
         try {
             const diffs = ["easy", "normal", "hard"];
             for (const d of diffs) {
-                await db.collection("rankings_v2").doc(`${playerName}_${d}`).delete();
+                await db.collection("rankings_v2").doc(`${playerName}__${d}`).delete();
             }
-            await db.collection("rankings").doc(playerName).delete();
             await clearGameState();
+            alert(`アカウント「${playerName}」のデータを削除しました。`);
+            promptPlayerLogin();
         } catch (e) {
             console.error("Firestore Delete Fail:", e);
+            alert("削除処理中にエラーが発生しました。");
         }
-        
-        alert(`アカウント「${playerName}」を削除しました。`);
-
-        setTimeout(() => {
-            promptPlayerLogin();
-        }, 50);
     }
 });
 
@@ -1025,17 +1001,18 @@ giveupBtn.addEventListener("click", () => {
 });
 
 backToMenuBtn.addEventListener("click", () => {
-    saveGameState();
     gameoverOverlay.style.display = "none";
     gameMainContent.classList.remove("blur-active");
     gameScreen.style.display = "none";
     homeScreen.style.display = "block";
 });
+
 speedSlider.addEventListener("input", function() {
     ballSpeed = parseInt(this.value, 10);
     speedValue.innerText = ballSpeed;
     normalizeBallVelocities();
 });
+
 function normalizeBallVelocities() {
     balls.forEach(ball => {
         if (ball.active) {
@@ -1132,6 +1109,7 @@ canvas.addEventListener("dblclick", () => {
         saveGameState();
     }
 });
+
 quizTriggerBtn.addEventListener("click", () => {
     if (hasAnsweredThisTurn || isBallMoving || gameOver) return;
     
@@ -1149,12 +1127,14 @@ quizTriggerBtn.addEventListener("click", () => {
     quizModal.style.display = "block";
     quizInput.focus();
 });
+
 quizSubmitBtn.addEventListener("click", checkAnswer);
 quizInput.addEventListener("keypress", function(e) {
     if (e.key === "Enter" && !quizSubmitBtn.disabled) {
         checkAnswer();
     }
 });
+
 function checkAnswer() {
     if (hasAnsweredThisTurn || !currentQuiz) return;
 
@@ -1181,6 +1161,7 @@ function checkAnswer() {
 function closeQuizModal() {
     quizModal.style.display = "none";
 }
+
 retryBtn.addEventListener("click", initGame);
 
 function calculateBlockHp() {
@@ -1294,16 +1275,17 @@ function spawnNewRow() {
     });
 }
 
-function triggerGameOver() {
+async function triggerGameOver() {
     gameOver = true;
-    clearGameState();
     document.getElementById("gameover-score").innerText = score;
-    checkAndSaveHighScore();
     gameMainContent.classList.add("blur-active");
     gameoverOverlay.style.display = "flex";
     quizTriggerBtn.disabled = true;
     giveupBtn.disabled = true;
     closeQuizModal();
+
+    await checkAndSaveHighScore();
+    await clearGameState();
 }
 
 function checkLinesStatus() {
