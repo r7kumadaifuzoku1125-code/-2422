@@ -982,7 +982,7 @@ deleteAccountBtn.addEventListener("click", async () => {
         try {
             const diffs = ["easy", "normal", "hard"];
             for (const d of diffs) {
-                await db.collection("rankings_v2").doc(`${playerName}__${d}`).delete();
+                await db.collection("rankings_v2").doc(`${playerName}_${d}`).delete();
             }
             await clearGameState();
             alert(`アカウント「${playerName}」のデータを削除しました。`);
