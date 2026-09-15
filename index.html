@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英単語クイズ・マルチボールブロック崩し (Firestore完全統一版)</title>
+    <title>英単語クイズ・マルチボールブロック崩し (管理者機能付き)</title>
     <style>
         body {
             margin: 0;
@@ -182,17 +182,17 @@
             font-weight: bold;
         }
 
-        .ranking-list {
+        .ranking-list, .admin-account-list {
             max-height: 280px;
             overflow-y: auto;
             margin-bottom: 20px;
             text-align: left;
             border: 1px solid #444;
             background: #1a1a1a;
-            border-radius: 0 0 8px 8px;
+            border-radius: 8px;
             padding: 4px;
         }
-        .ranking-item {
+        .ranking-item, .admin-account-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -200,7 +200,7 @@
             border-bottom: 1px solid #333;
             font-size: 14px;
         }
-        .ranking-item:last-child {
+        .ranking-item:last-child, .admin-account-item:last-child {
             border-bottom: none;
         }
         .ranking-item.current-user {
@@ -336,20 +336,27 @@
             background: #ff5555;
         }
 
-        #quiz-modal {
+        #quiz-modal, #admin-modal {
             display: none;
             position: fixed;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(20, 20, 20, 0.95);
-            border: 3px solid #00ffaa;
             border-radius: 12px;
             padding: 20px;
-            width: 280px;
+            width: 300px;
             text-align: center;
-            box-shadow: 0 0 30px rgba(0, 255, 170, 0.3);
-            z-index: 10;
+            z-index: 100;
         }
+        #quiz-modal {
+            border: 3px solid #00ffaa;
+            box-shadow: 0 0 30px rgba(0, 255, 170, 0.3);
+        }
+        #admin-modal {
+            border: 3px solid #ff3333;
+            box-shadow: 0 0 30px rgba(255, 51, 51, 0.3);
+        }
+
         #quiz-question {
             font-size: 18px;
             font-weight: bold;
@@ -433,6 +440,25 @@
             color: #111;
             border: none;
         }
+        .btn-admin {
+            background: linear-gradient(135deg, #ff3333, #aa0000);
+            color: #fff;
+            border: none;
+            display: none;
+        }
+        .btn-delete-user {
+            background: #ff3333;
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-delete-user:hover {
+            background: #ff5555;
+        }
         .btn-back {
             background: #333;
             border: 1px solid #555;
@@ -440,21 +466,6 @@
         }
         .btn-back:hover {
             background: #444;
-        }
-
-        .btn-delete-small {
-            margin-top: 10px;
-            padding: 5px;
-            font-size: 12px;
-            color: #888;
-            background: transparent;
-            border: none;
-            text-decoration: underline;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .btn-delete-small:hover {
-            color: #ff5555;
         }
 
         #gameover-overlay {
@@ -549,8 +560,7 @@
         <button class="menu-btn btn-start" id="start-game-btn">ゲームスタート</button>
         <button class="menu-btn btn-wordbook" id="open-wordbook-btn">単語帳を見る</button>
         <button class="menu-btn btn-highscore" id="open-highscore-btn">ランキングを見る</button>
-        
-        <button class="btn-delete-small" id="delete-account-btn">このアカウントの記録を削除</button>
+        <button class="menu-btn btn-admin" id="admin-delete-btn">管理画面 (アカウント管理)</button>
     </div>
 </div>
 
@@ -573,6 +583,12 @@
         <div class="ranking-list" id="ranking-list-container"></div>
         <button class="menu-btn btn-back" id="close-highscore-btn">メニューに戻る</button>
     </div>
+</div>
+
+<div id="admin-modal">
+    <div style="font-size:18px; font-weight:bold; color:#ff3333; margin-bottom:12px;">登録アカウント一覧</div>
+    <div class="admin-account-list" id="admin-account-list-container"></div>
+    <button class="menu-btn btn-back" id="close-admin-modal-btn">閉じる</button>
 </div>
 
 <div id="game-screen">
@@ -679,6 +695,14 @@ function promptPlayerLogin() {
     }
     playerName = input;
     document.getElementById("current-player-id").innerText = playerName;
+
+    // administratorログイン時の管理者メニュー切り替え
+    const adminBtn = document.getElementById("admin-delete-btn");
+    if (playerName.toLowerCase() === "administrator") {
+        adminBtn.style.display = "block";
+    } else {
+        adminBtn.style.display = "none";
+    }
 }
 
 promptPlayerLogin();
@@ -694,7 +718,11 @@ const openWordbookBtn = document.getElementById("open-wordbook-btn");
 const closeWordbookBtn = document.getElementById("close-wordbook-btn");
 const openHighscoreBtn = document.getElementById("open-highscore-btn"); 
 const closeHighscoreBtn = document.getElementById("close-highscore-btn"); 
-const deleteAccountBtn = document.getElementById("delete-account-btn");
+const adminDeleteBtn = document.getElementById("admin-delete-btn");
+const adminModal = document.getElementById("admin-modal");
+const closeAdminModalBtn = document.getElementById("close-admin-modal-btn");
+const adminAccountListContainer = document.getElementById("admin-account-list-container");
+
 const giveupBtn = document.getElementById("giveup-btn");
 const backToMenuBtn = document.getElementById("back-to-menu-btn");
 const gameoverOverlay = document.getElementById("gameover-overlay");
@@ -768,7 +796,6 @@ const gameoverDeadlineY = gameOverRow * (brickSize + brickPadding) - brickPaddin
 
 let bricks = [];
 
-// 難易度選択UIのイベントリスナー
 document.querySelectorAll(".diff-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
         document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("active"));
@@ -778,7 +805,6 @@ document.querySelectorAll(".diff-btn").forEach(btn => {
     });
 });
 
-// ランキングタブ切替のイベントリスナー
 document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -908,20 +934,27 @@ async function checkAndSaveHighScore() {
         const userRef = db.collection("rankings_v2").doc(docId);
         const doc = await userRef.get();
 
+        const savePayload = {
+            name: playerName,
+            score: score,
+            difficulty: selectedDifficulty,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
         if (doc.exists) {
             const currentRecord = doc.data().score || 0;
             if (score > currentRecord) {
-                await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+                await userRef.set(savePayload, { merge: true });
                 saveStatusMsg.innerText = "★ 最高スコア更新！ ★";
             } else {
                 saveStatusMsg.innerText = "スコア保存完了";
             }
         } else {
-            await userRef.set({ name: playerName, score: score, difficulty: selectedDifficulty, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            await userRef.set(savePayload, { merge: true });
             saveStatusMsg.innerText = "★ ランキング初登録！ ★";
         }
     } catch (e) {
-        console.error("Firestore Save HighScore Error:", e);
+        console.error("Firestore Save HighScore Error Detail:", e);
         saveStatusMsg.innerText = "スコア保存失敗";
     }
 }
@@ -977,22 +1010,73 @@ closeHighscoreBtn.addEventListener("click", () => {
     homeScreen.style.display = "block";
 });
 
-deleteAccountBtn.addEventListener("click", async () => {
-    if (confirm(`アカウント「${playerName}」のスコア記録をすべて削除しますか？`)) {
+// 管理者専用 アカウント一覧取得・モーダル表示
+adminDeleteBtn.addEventListener("click", async () => {
+    if (playerName.toLowerCase() !== "administrator") return;
+    await fetchAndRenderAccountList();
+    adminModal.style.display = "block";
+});
+
+closeAdminModalBtn.addEventListener("click", () => {
+    adminModal.style.display = "none";
+});
+
+async function fetchAndRenderAccountList() {
+    adminAccountListContainer.innerHTML = `<div style="color:#aaa; padding:10px;">読み込み中...</div>`;
+    
+    try {
+        const usersSet = new Set();
+
+        const rankSnap = await db.collection("rankings_v2").get();
+        rankSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.name) usersSet.add(data.name);
+        });
+
+        const stateSnap = await db.collection("game_states").get();
+        stateSnap.forEach(doc => {
+            usersSet.add(doc.id);
+        });
+
+        adminAccountListContainer.innerHTML = "";
+        
+        if (usersSet.size === 0) {
+            adminAccountListContainer.innerHTML = `<div style="color:#aaa; padding:10px;">ユーザーが存在しません</div>`;
+            return;
+        }
+
+        usersSet.forEach(user => {
+            const item = document.createElement("div");
+            item.className = "admin-account-item";
+            item.innerHTML = `
+                <span class="ranking-name">${escapeHTML(user)}</span>
+                <button class="btn-delete-user" onclick="deleteUserAccount('${escapeHTML(user)}')">削除</button>
+            `;
+            adminAccountListContainer.appendChild(item);
+        });
+    } catch (e) {
+        console.error("Account List Fetch Fail:", e);
+        adminAccountListContainer.innerHTML = `<div style="color:#ff3333; padding:10px;">取得失敗</div>`;
+    }
+}
+
+async function deleteUserAccount(targetUser) {
+    if (!targetUser) return;
+    if (confirm(`本当にアカウント「${targetUser}」の全データを削除しますか？`)) {
         try {
             const diffs = ["easy", "normal", "hard"];
             for (const d of diffs) {
-                await db.collection("rankings_v2").doc(`${playerName}_${d}`).delete();
+                await db.collection("rankings_v2").doc(`${targetUser}_${d}`).delete();
             }
-            await clearGameState();
-            alert(`アカウント「${playerName}」のデータを削除しました。`);
-            promptPlayerLogin();
+            await db.collection("game_states").doc(targetUser).delete();
+            alert(`アカウント「${targetUser}」を削除しました。`);
+            await fetchAndRenderAccountList();
         } catch (e) {
-            console.error("Firestore Delete Fail:", e);
-            alert("削除処理中にエラーが発生しました。");
+            console.error("Delete Account Fail:", e);
+            alert("削除処理に失敗しました。");
         }
     }
-});
+}
 
 giveupBtn.addEventListener("click", () => {
     if (confirm("ゲームを終了してゲームオーバーにしますか？")) {
