@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英単語クイズ・マルチボールブロック崩し (管理者機能付き)</title>
+    <title>英単語クイズ・マルチボールブロック崩し (自動セーブ機能付き)</title>
     <style>
         body {
             margin: 0;
@@ -275,7 +275,6 @@
         .word-q { color: #ffff33; font-weight: bold; }
         .word-a { color: #00ffaa; font-family: monospace; }
 
-        /* 重なりを防ぐためUIのレイアウトを調整 */
         #ui-container {
             position: relative;
             display: flex;
@@ -288,7 +287,7 @@
         #info {
             font-size: 15px;
             width: 100%;
-            padding-right: 180px; /* ハイスコア表示部と重ならないよう余白を拡張 */
+            padding-right: 180px; 
             box-sizing: border-box;
             text-align: left;
             padding-left: 10px;
@@ -680,28 +679,13 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let playerName = "";
-let selectedDifficulty = "normal"; // easy, normal, hard
-let viewRankingDifficulty = "normal"; // ランキング画面の現在タブ
+let selectedDifficulty = "normal"; 
+let viewRankingDifficulty = "normal"; 
 
 const DIFFICULTY_SETTINGS = {
-    easy: {
-        spawnProbability: 0.50,
-        hpMultiplier: 0.7,
-        itemDropRate: 0.03,
-        name: "EASY"
-    },
-    normal: {
-        spawnProbability: 0.35,
-        hpMultiplier: 1.0,
-        itemDropRate: 0.02,
-        name: "NORMAL"
-    },
-    hard: {
-        spawnProbability: 0.20,
-        hpMultiplier: 1.5,
-        itemDropRate: 0.01,
-        name: "HARD"
-    }
+    easy: { spawnProbability: 0.50, hpMultiplier: 0.7, itemDropRate: 0.03, name: "EASY" },
+    normal: { spawnProbability: 0.35, hpMultiplier: 1.0, itemDropRate: 0.02, name: "NORMAL" },
+    hard: { spawnProbability: 0.20, hpMultiplier: 1.5, itemDropRate: 0.01, name: "HARD" }
 };
 
 function promptPlayerLogin(isChange = false) {
@@ -717,14 +701,13 @@ function promptPlayerLogin(isChange = false) {
                 alert("番号が入力されていません。入力してください。");
             }
         } else {
-            if (isChange) return; // 名前変更のキャンセルなら抜ける
+            if (isChange) return; 
             alert("番号を入力しないとゲームを開始できません。");
         }
     }
     playerName = input;
     document.getElementById("current-player-id").innerText = playerName;
 
-    // administratorログイン時の管理者メニュー切り替え
     const adminBtn = document.getElementById("admin-delete-btn");
     if (playerName.toLowerCase() === "administrator") {
         adminBtn.style.display = "block";
@@ -850,6 +833,7 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
+// ゲーム状態の保存
 async function saveGameState() {
     if (gameOver) {
         await clearGameState();
@@ -872,6 +856,7 @@ async function saveGameState() {
     }
 }
 
+// ゲーム状態の読み込み
 async function loadGameState() {
     try {
         const doc = await db.collection("game_states").doc(playerName).get();
@@ -892,6 +877,7 @@ async function loadGameState() {
     }
 }
 
+// ゲーム状態の消去
 async function clearGameState() {
     try {
         await db.collection("game_states").doc(playerName).delete();
@@ -900,6 +886,7 @@ async function clearGameState() {
     }
 }
 
+// 画面を離れる／リロード時に自動セーブを実行
 window.addEventListener("beforeunload", () => {
     if (gameScreen.style.display === "block" && !gameOver) {
         saveGameState();
@@ -1016,23 +1003,18 @@ function escapeHTML(str) {
 
 initRealtimeRankings();
 
+// スタートボタン処理（セーブデータ存在の自動確認処理を追加）
 startGameBtn.addEventListener("click", async () => {
     try {
         const stateDoc = await db.collection("game_states").doc(playerName).get();
         if (stateDoc.exists) {
-            // 1回目の確認
-            if (confirm("前回の途中からやり直しますか？")) {
+            if (confirm(`「${playerName}」のセーブデータが見つかりました。\n前回の続きから始めますか？\n（[キャンセル]を押すとデータを初期化して新規で始めます）`)) {
                 homeScreen.style.display = "none";
                 gameScreen.style.display = "block";
                 await loadGameFromSave();
                 return;
             } else {
-                // 2回目の確認（キャンセルを押された場合）
-                if (confirm("本当に途中のデータを破棄して最初から始めますか？\n（[キャンセル]を押すと現在の記録を保持したままメニューにとどまります）")) {
-                    await clearGameState();
-                } else {
-                    return; // キャンセルなら何もせずホーム画面にとどまる
-                }
+                await clearGameState();
             }
         }
     } catch (e) {
@@ -1066,7 +1048,6 @@ closeHighscoreBtn.addEventListener("click", () => {
     homeScreen.style.display = "block";
 });
 
-// 管理者専用 アカウント一覧取得・モーダル表示
 adminDeleteBtn.addEventListener("click", async () => {
     if (playerName.toLowerCase() !== "administrator") return;
     await fetchAndRenderAccountList();
