@@ -61,83 +61,20 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 5px;
         }
         .player-display {
             font-size: 14px;
             color: #00ffaa;
             font-weight: bold;
         }
-        .btn-change-name {
-            padding: 2px 8px;
-            font-size: 11px;
-            background: #333;
-            color: #00ffaa;
-            border: 1px solid #00ffaa;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-change-name:hover {
-            background: #00ffaa;
-            color: #111;
-        }
         .menu-subtitle {
             font-size: 12px;
             color: #888;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             letter-spacing: 2px;
         }
 
-        /* 難易度選択スタイリング */
-        .difficulty-container {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .difficulty-label {
-            font-size: 12px;
-            color: #aaa;
-            margin-bottom: 6px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .difficulty-selector {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-        }
-        .diff-btn {
-            flex: 1;
-            padding: 8px 0;
-            font-size: 13px;
-            font-weight: bold;
-            background: #222;
-            color: #888;
-            border: 1px solid #444;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .diff-btn.active[data-diff="easy"] {
-            background: #28a745;
-            color: #fff;
-            border-color: #28a745;
-            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
-        }
-        .diff-btn.active[data-diff="normal"] {
-            background: #ffc107;
-            color: #111;
-            border-color: #ffc107;
-            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
-        }
-        .diff-btn.active[data-diff="hard"] {
-            background: #dc3545;
-            color: #fff;
-            border-color: #dc3545;
-            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
-        }
-
-        /* ランキングタブスタイリング */
         .tab-container {
             display: flex;
             gap: 5px;
@@ -358,7 +295,7 @@
             background: #ff5555;
         }
 
-        #quiz-modal, #admin-modal {
+        #quiz-modal, #admin-modal, #diff-select-modal {
             display: none;
             position: fixed;
             top: 50%; left: 50%;
@@ -378,6 +315,29 @@
             border: 3px solid #ff3333;
             box-shadow: 0 0 30px rgba(255, 51, 51, 0.3);
         }
+        #diff-select-modal {
+            border: 3px solid #00ffaa;
+            box-shadow: 0 0 30px rgba(0, 255, 170, 0.3);
+            z-index: 2000;
+        }
+
+        .diff-modal-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .diff-modal-btn:hover {
+            transform: scale(1.02);
+        }
+        .diff-modal-btn[data-diff="easy"] { background: #28a745; color: #fff; }
+        .diff-modal-btn[data-diff="normal"] { background: #ffc107; color: #111; }
+        .diff-modal-btn[data-diff="hard"] { background: #dc3545; color: #fff; }
 
         #quiz-question {
             font-size: 18px;
@@ -467,6 +427,16 @@
             color: #fff;
             border: none;
             display: none;
+        }
+        .btn-change-name-bottom {
+            background: #333;
+            color: #00ffaa;
+            border: 1px solid #00ffaa;
+            margin-bottom: 0;
+        }
+        .btn-change-name-bottom:hover {
+            background: #00ffaa;
+            color: #111;
         }
         .btn-delete-user {
             background: #ff3333;
@@ -569,24 +539,23 @@
         <div class="menu-title">BRK BREAKER</div>
         <div class="player-display-box">
             <div class="player-display">PLAYER: <span id="current-player-id">----</span></div>
-            <button class="btn-change-name" id="change-name-btn">名前変更</button>
         </div>
         <div class="menu-subtitle">MULTIBALL & QUIZ</div>
-        
-        <div class="difficulty-container">
-            <div class="difficulty-label">DIFFICULTY SELECT</div>
-            <div class="difficulty-selector">
-                <button class="diff-btn" data-diff="easy">EASY</button>
-                <button class="diff-btn active" data-diff="normal">NORMAL</button>
-                <button class="diff-btn" data-diff="hard">HARD</button>
-            </div>
-        </div>
 
         <button class="menu-btn btn-start" id="start-game-btn">ゲームスタート</button>
         <button class="menu-btn btn-wordbook" id="open-wordbook-btn">単語帳を見る</button>
         <button class="menu-btn btn-highscore" id="open-highscore-btn">ランキングを見る</button>
         <button class="menu-btn btn-admin" id="admin-delete-btn">管理画面 (アカウント管理)</button>
+        <button class="menu-btn btn-change-name-bottom" id="change-name-btn">名前を変更する</button>
     </div>
+</div>
+
+<div id="diff-select-modal">
+    <div style="font-size:18px; font-weight:bold; color:#00ffaa; margin-bottom:15px;">難易度を選択してください</div>
+    <button class="diff-modal-btn" data-diff="easy">EASY</button>
+    <button class="diff-modal-btn" data-diff="normal">NORMAL</button>
+    <button class="diff-modal-btn" data-diff="hard">HARD</button>
+    <button class="menu-btn btn-back" id="close-diff-modal-btn" style="margin-top:10px;">キャンセル</button>
 </div>
 
 <div id="wordbook-screen">
@@ -688,11 +657,10 @@ const DIFFICULTY_SETTINGS = {
     hard: { spawnProbability: 0.20, hpMultiplier: 1.5, itemDropRate: 0.01, name: "HARD" }
 };
 
-function promptPlayerLogin(isChange = false) {
+function promptPlayerLogin() {
     let input = null;
     while (!input) {
-        let msg = isChange ? "新しいプレイヤー名（4連番号など）を入力してください" : "4連番号（プレイヤー名）を入力してください";
-        let res = prompt(msg, playerName || "");
+        let res = prompt("4連番号（プレイヤー名）を入力してください", playerName || "");
         if (res !== null) {
             res = res.trim();
             if (res.length > 0) {
@@ -701,29 +669,75 @@ function promptPlayerLogin(isChange = false) {
                 alert("番号が入力されていません。入力してください。");
             }
         } else {
-            if (isChange) return; 
             alert("番号を入力しないとゲームを開始できません。");
         }
     }
     playerName = input;
-    document.getElementById("current-player-id").innerText = playerName;
+    updatePlayerDisplay();
+}
 
+async function renameCurrentAccount() {
+    let newName = prompt("新しい名前を入力してください", playerName || "");
+    if (newName === null) return; 
+    newName = newName.trim();
+    if (newName.length === 0) {
+        alert("名前が入力されていません。");
+        return;
+    }
+    if (newName === playerName) return;
+
+    const oldName = playerName;
+    playerName = newName;
+    updatePlayerDisplay();
+
+    // 1. ローカルストレージ内のセーブデータの名前を書き換え
+    const local = localStorage.getItem(`brk_save_${oldName}`);
+    if (local) {
+        let saveData = JSON.parse(local);
+        saveData.playerName = newName;
+        localStorage.setItem(`brk_save_${newName}`, JSON.stringify(saveData));
+        localStorage.removeItem(`brk_save_${oldName}`);
+    }
+
+    // 2. Firestore上の各難易度のランキング・セーブデータの名前(name)フィールドを更新
+    const diffs = ["easy", "normal", "hard"];
+    for (const d of diffs) {
+        const docId = `${oldName}_${d}`;
+        try {
+            const doc = await db.collection("rankings_v2").doc(docId).get();
+            if (doc.exists) {
+                let data = doc.data();
+                data.name = newName;
+                if (data.activeState) {
+                    data.activeState.playerName = newName;
+                }
+                const newDocId = `${newName}_${d}`;
+                await db.collection("rankings_v2").doc(newDocId).set(data);
+                await db.collection("rankings_v2").doc(docId).delete();
+            }
+        } catch (e) {
+            console.error(`Firestore rename error (${d}):`, e);
+        }
+    }
+
+    updateRankingData();
+    alert(`名前を「${newName}」に変更しました。`);
+}
+
+function updatePlayerDisplay() {
+    document.getElementById("current-player-id").innerText = playerName;
     const adminBtn = document.getElementById("admin-delete-btn");
     if (playerName.toLowerCase() === "administrator") {
         adminBtn.style.display = "block";
     } else {
         adminBtn.style.display = "none";
     }
-
-    if (isChange) {
-        updateRankingData();
-    }
 }
 
 promptPlayerLogin();
 
 document.getElementById("change-name-btn").addEventListener("click", () => {
-    promptPlayerLogin(true);
+    renameCurrentAccount();
 });
 
 const homeScreen = document.getElementById("home-screen");
@@ -731,6 +745,7 @@ const gameScreen = document.getElementById("game-screen");
 const wordbookScreen = document.getElementById("wordbook-screen");
 const highscoreScreen = document.getElementById("highscore-screen"); 
 const gameMainContent = document.getElementById("game-main-content");
+const diffSelectModal = document.getElementById("diff-select-modal");
 
 const startGameBtn = document.getElementById("start-game-btn");
 const openWordbookBtn = document.getElementById("open-wordbook-btn");
@@ -741,6 +756,7 @@ const adminDeleteBtn = document.getElementById("admin-delete-btn");
 const adminModal = document.getElementById("admin-modal");
 const closeAdminModalBtn = document.getElementById("close-admin-modal-btn");
 const adminAccountListContainer = document.getElementById("admin-account-list-container");
+const closeDiffModalBtn = document.getElementById("close-diff-modal-btn");
 
 const giveupBtn = document.getElementById("giveup-btn");
 const backToMenuBtn = document.getElementById("back-to-menu-btn");
@@ -815,15 +831,6 @@ const gameoverDeadlineY = gameOverRow * (brickSize + brickPadding) - brickPaddin
 
 let bricks = [];
 
-document.querySelectorAll(".diff-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-        document.querySelectorAll(".diff-btn").forEach(b => b.classList.remove("active"));
-        e.target.classList.add("active");
-        selectedDifficulty = e.target.getAttribute("data-diff");
-        updateRankingData();
-    });
-});
-
 document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -833,60 +840,95 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
-// ゲーム状態の保存
+// 難易度選択ボタン（モーダル内）の処理
+document.querySelectorAll(".diff-modal-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+        selectedDifficulty = e.target.getAttribute("data-diff");
+        diffSelectModal.style.display = "none";
+        await processStartGame();
+    });
+});
+
+closeDiffModalBtn.addEventListener("click", () => {
+    diffSelectModal.style.display = "none";
+});
+
+// セーブデータの保存
 async function saveGameState() {
     if (gameOver) {
         await clearGameState();
         return;
     }
     const saveData = {
+        playerName: playerName,
         score: score,
         maxBalls: maxBalls,
         totalRowsSpawned: totalRowsSpawned,
         hasAnsweredThisTurn: hasAnsweredThisTurn,
-        bricks: bricks,
-        items: items,
+        bricks: JSON.stringify(bricks),
+        items: JSON.stringify(items),
         difficulty: selectedDifficulty,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        hasSavedData: true
     };
+
+    localStorage.setItem(`brk_save_${playerName}`, JSON.stringify(saveData));
+
     try {
-        await db.collection("game_states").doc(playerName).set(saveData);
+        const docId = `${playerName}_${selectedDifficulty}`;
+        await db.collection("rankings_v2").doc(docId).set({
+            activeState: saveData
+        }, { merge: true });
     } catch (e) {
-        console.error("Firestore Save Game State Error:", e);
+        console.error("Firestore Save Error:", e);
     }
 }
 
-// ゲーム状態の読み込み
+// セーブデータの読み込み
 async function loadGameState() {
+    const docId = `${playerName}_${selectedDifficulty}`;
+    let data = null;
+
     try {
-        const doc = await db.collection("game_states").doc(playerName).get();
-        if (!doc.exists) return false;
-        
-        const data = doc.data();
-        score = data.score || 0;
-        maxBalls = data.maxBalls || 1;
-        totalRowsSpawned = data.totalRowsSpawned || 1;
-        hasAnsweredThisTurn = !!data.hasAnsweredThisTurn;
-        bricks = data.bricks || [];
-        items = data.items || [];
-        selectedDifficulty = data.difficulty || "normal";
-        return true;
+        const doc = await db.collection("rankings_v2").doc(docId).get();
+        if (doc.exists && doc.data().activeState && doc.data().activeState.hasSavedData) {
+            data = doc.data().activeState;
+        }
     } catch (e) {
-        console.error("Firestore Load Game State Error:", e);
-        return false;
+        console.error("Firestore Load Error:", e);
     }
+
+    if (!data) {
+        const local = localStorage.getItem(`brk_save_${playerName}`);
+        if (local) {
+            data = JSON.parse(local);
+        }
+    }
+
+    if (!data || !data.hasSavedData) return false;
+
+    score = data.score || 0;
+    maxBalls = data.maxBalls || 1;
+    totalRowsSpawned = data.totalRowsSpawned || 1;
+    hasAnsweredThisTurn = !!data.hasAnsweredThisTurn;
+    bricks = typeof data.bricks === "string" ? JSON.parse(data.bricks) : (data.bricks || []);
+    items = typeof data.items === "string" ? JSON.parse(data.items) : (data.items || []);
+    selectedDifficulty = data.difficulty || "normal";
+    return true;
 }
 
-// ゲーム状態の消去
+// セーブデータの消去
 async function clearGameState() {
+    localStorage.removeItem(`brk_save_${playerName}`);
     try {
-        await db.collection("game_states").doc(playerName).delete();
+        const docId = `${playerName}_${selectedDifficulty}`;
+        await db.collection("rankings_v2").doc(docId).set({
+            activeState: firebase.firestore.FieldValue.delete()
+        }, { merge: true });
     } catch (e) {
-        console.error("Firestore Clear Game State Error:", e);
+        console.error("Firestore Clear Error:", e);
     }
 }
 
-// 画面を離れる／リロード時に自動セーブを実行
 window.addEventListener("beforeunload", () => {
     if (gameScreen.style.display === "block" && !gameOver) {
         saveGameState();
@@ -900,7 +942,7 @@ function initRealtimeRankings() {
           snapshot.forEach((doc) => {
               const data = doc.data();
               const diff = data.difficulty || "normal";
-              if (rankingsByDiff[diff]) {
+              if (rankingsByDiff[diff] && data.score !== undefined) {
                   rankingsByDiff[diff].push(data);
               }
           });
@@ -951,7 +993,7 @@ function renderRankings() {
         div.innerHTML = `
             <span class="ranking-rank">${index + 1}</span>
             <span class="ranking-name">${escapeHTML(item.name)}${isCurrent ? ' <small style="color:#00ffaa; font-size:11px;">(自分)</small>' : ''}</span>
-            <span class="ranking-score">${item.score.toLocaleString()}</span>
+            <span class="ranking-score">${(item.score || 0).toLocaleString()}</span>
         `;
         rankingListContainer.appendChild(div);
     });
@@ -1003,28 +1045,64 @@ function escapeHTML(str) {
 
 initRealtimeRankings();
 
-// スタートボタン処理（セーブデータ存在の自動確認処理を追加）
-startGameBtn.addEventListener("click", async () => {
-    try {
-        const stateDoc = await db.collection("game_states").doc(playerName).get();
-        if (stateDoc.exists) {
-            if (confirm(`「${playerName}」のセーブデータが見つかりました。\n前回の続きから始めますか？\n（[キャンセル]を押すとデータを初期化して新規で始めます）`)) {
+// ゲームスタートボタン：まず難易度選択ダイアログを表示
+startGameBtn.addEventListener("click", () => {
+    diffSelectModal.style.display = "block";
+});
+
+// 難易度選択後にゲーム開始・ロード処理を実行
+async function processStartGame() {
+    let hasData = false;
+
+    // ローカルストレージチェック
+    const local = localStorage.getItem(`brk_save_${playerName}`);
+    if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed.difficulty === selectedDifficulty) {
+            hasData = true;
+        }
+    }
+    
+    if (!hasData) {
+        // Firestoreチェック
+        try {
+            const docId = `${playerName}_${selectedDifficulty}`;
+            const stateDoc = await db.collection("rankings_v2").doc(docId).get();
+            if (stateDoc.exists && stateDoc.data().activeState && stateDoc.data().activeState.hasSavedData) {
+                hasData = true;
+            }
+        } catch (e) {
+            console.error("Save Check Error:", e);
+        }
+    }
+
+    if (hasData) {
+        let continueGame = confirm(`「${playerName}」のセーブデータが見つかりました（難易度: ${selectedDifficulty.toUpperCase()}）。\n前回の続きから始めますか？`);
+        
+        if (continueGame) {
+            homeScreen.style.display = "none";
+            gameScreen.style.display = "block";
+            await loadGameFromSave();
+            return;
+        } else {
+            // キャンセルされた場合、誤操作防止のための再確認
+            let confirmDelete = confirm("【確認】本当にデータを初期化して、最初から始めますか？\n（※既存のセーブデータは消去されます）");
+            if (confirmDelete) {
+                await clearGameState();
+            } else {
+                // 再確認でもキャンセルした場合は続きから開始する
                 homeScreen.style.display = "none";
                 gameScreen.style.display = "block";
                 await loadGameFromSave();
                 return;
-            } else {
-                await clearGameState();
             }
         }
-    } catch (e) {
-        console.error("Save Check Error:", e);
     }
-    
+
     homeScreen.style.display = "none";
     gameScreen.style.display = "block";
     initGame();
-});
+}
 
 openWordbookBtn.addEventListener("click", () => {
     homeScreen.style.display = "none";
@@ -1070,11 +1148,6 @@ async function fetchAndRenderAccountList() {
             if (data.name) usersSet.add(data.name);
         });
 
-        const stateSnap = await db.collection("game_states").get();
-        stateSnap.forEach(doc => {
-            usersSet.add(doc.id);
-        });
-
         adminAccountListContainer.innerHTML = "";
         
         if (usersSet.size === 0) {
@@ -1105,7 +1178,7 @@ async function deleteUserAccount(targetUser) {
             for (const d of diffs) {
                 await db.collection("rankings_v2").doc(`${targetUser}_${d}`).delete();
             }
-            await db.collection("game_states").doc(targetUser).delete();
+            localStorage.removeItem(`brk_save_${targetUser}`);
             alert(`アカウント「${targetUser}」を削除しました。`);
             await fetchAndRenderAccountList();
         } catch (e) {
