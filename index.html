@@ -610,7 +610,8 @@
             </div>
             <div id="speed-controller">
                 <span>SPEED:</span>
-                <input type="range" id="speedSlider" min="3" max="30" value="8" step="1">
+                <!-- maxを30から60に変更 -->
+                <input type="range" id="speedSlider" min="3" max="60" value="8" step="1">
                 <span id="speedValue">8</span>
             </div>
         </div>
@@ -1769,30 +1770,21 @@ function drawBricks() {
 
                 let baseColor, lightColor, darkColor;
 
-                // HPに応じて色を柔軟に変更（段階拡張）
                 if (b.hp < 4) {
-                    // 黄色 (1〜3)
                     baseColor = "#ffff33"; lightColor = "#ffff99"; darkColor = "#999900";
                 } else if (b.hp < 10) {
-                    // オレンジ (4〜9)
                     baseColor = "#ff9900"; lightColor = "#ffcc99"; darkColor = "#996600";
                 } else if (b.hp < 20) {
-                    // 赤 (10〜19)
                     baseColor = "#ff3333"; lightColor = "#ff9999"; darkColor = "#990000";
                 } else if (b.hp < 50) {
-                    // 紫 (20〜49)
                     baseColor = "#cc33ff"; lightColor = "#ecb3ff"; darkColor = "#660099";
                 } else if (b.hp < 100) {
-                    // マゼンタ・ピンク (50〜99)
                     baseColor = "#ff00aa"; lightColor = "#ff80d5"; darkColor = "#880055";
                 } else if (b.hp < 200) {
-                    // ディープブルー (100〜199)
                     baseColor = "#0066ff"; lightColor = "#80b3ff"; darkColor = "#003399";
                 } else if (b.hp < 500) {
-                    // シアン (200〜499)
                     baseColor = "#00ffff"; lightColor = "#b3ffff"; darkColor = "#008888";
                 } else {
-                    // ゴールド (500以上)
                     baseColor = "#ffd700"; lightColor = "#fff5b3"; darkColor = "#b8860b";
                 }
 
