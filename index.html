@@ -686,17 +686,14 @@ async function renameCurrentAccount() {
     }
     if (newName === playerName) return;
 
-    // 重複チェック (Firestore上に新しい名前のデータが存在するか確認)
     const diffs = ["easy", "normal", "hard"];
     let nameExists = false;
 
     try {
-        // nameフィールドが新しい名前と一致するドキュメントが存在するかチェック
         const querySnap = await db.collection("rankings_v2").where("name", "==", newName).get();
         if (!querySnap.empty) {
             nameExists = true;
         } else {
-            // ドキュメントIDのパターンでも念のため重複をチェック
             for (const d of diffs) {
                 const docSnap = await db.collection("rankings_v2").doc(`${newName}_${d}`).get();
                 if (docSnap.exists) {
@@ -718,7 +715,6 @@ async function renameCurrentAccount() {
     playerName = newName;
     updatePlayerDisplay();
 
-    // 1. ローカルストレージ内のセーブデータの名前を書き換え
     const local = localStorage.getItem(`brk_save_${oldName}`);
     if (local) {
         let saveData = JSON.parse(local);
@@ -727,7 +723,6 @@ async function renameCurrentAccount() {
         localStorage.removeItem(`brk_save_${oldName}`);
     }
 
-    // 2. Firestore上の各難易度のランキング・セーブデータの名前(name)フィールドを更新
     for (const d of diffs) {
         const docId = `${oldName}_${d}`;
         try {
@@ -867,7 +862,6 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
-// 難易度選択ボタン（モーダル内）の処理
 document.querySelectorAll(".diff-modal-btn").forEach(btn => {
     btn.addEventListener("click", async (e) => {
         selectedDifficulty = e.target.getAttribute("data-diff");
@@ -880,7 +874,6 @@ closeDiffModalBtn.addEventListener("click", () => {
     diffSelectModal.style.display = "none";
 });
 
-// セーブデータの保存
 async function saveGameState() {
     if (gameOver) {
         await clearGameState();
@@ -910,7 +903,6 @@ async function saveGameState() {
     }
 }
 
-// セーブデータの読み込み
 async function loadGameState() {
     const docId = `${playerName}_${selectedDifficulty}`;
     let data = null;
@@ -943,7 +935,6 @@ async function loadGameState() {
     return true;
 }
 
-// セーブデータの消去
 async function clearGameState() {
     localStorage.removeItem(`brk_save_${playerName}`);
     try {
@@ -1072,16 +1063,13 @@ function escapeHTML(str) {
 
 initRealtimeRankings();
 
-// ゲームスタートボタン：まず難易度選択ダイアログを表示
 startGameBtn.addEventListener("click", () => {
     diffSelectModal.style.display = "block";
 });
 
-// 難易度選択後にゲーム開始・ロード処理を実行
 async function processStartGame() {
     let hasData = false;
 
-    // ローカルストレージチェック
     const local = localStorage.getItem(`brk_save_${playerName}`);
     if (local) {
         const parsed = JSON.parse(local);
@@ -1091,7 +1079,6 @@ async function processStartGame() {
     }
     
     if (!hasData) {
-        // Firestoreチェック
         try {
             const docId = `${playerName}_${selectedDifficulty}`;
             const stateDoc = await db.collection("rankings_v2").doc(docId).get();
@@ -1112,12 +1099,10 @@ async function processStartGame() {
             await loadGameFromSave();
             return;
         } else {
-            // キャンセルされた場合、誤操作防止のための再確認
             let confirmDelete = confirm("【確認】本当にデータを初期化して、最初から始めますか？\n（※既存のセーブデータは消去されます）");
             if (confirmDelete) {
                 await clearGameState();
             } else {
-                // 再確認でもキャンセルした場合は続きから開始する
                 homeScreen.style.display = "none";
                 gameScreen.style.display = "block";
                 await loadGameFromSave();
@@ -1782,36 +1767,64 @@ function drawBricks() {
                 const brickX = c * (brickSize + brickPadding) + brickOffsetLeft;
                 const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
 
-                let baseColor = "#ffff33"; let lightColor = "#ffff99";
-                let darkColor = "#999900";
-                
-                if (b.hp >= 4 && b.hp < 10) {
-                    baseColor = "#ff9900";
-                    lightColor = "#ffcc99"; darkColor = "#996600";
-                } else if (b.hp >= 10 && b.hp < 20) {
-                    baseColor = "#ff3333";
-                    lightColor = "#ff9999"; darkColor = "#990000";
-                } else if (b.hp >= 20) {
-                    baseColor = "#cc33ff";
-                    lightColor = "#ecb3ff"; darkColor = "#660099";
+                let baseColor, lightColor, darkColor;
+
+                // HPに応じて色を柔軟に変更（段階拡張）
+                if (b.hp < 4) {
+                    // 黄色 (1〜3)
+                    baseColor = "#ffff33"; lightColor = "#ffff99"; darkColor = "#999900";
+                } else if (b.hp < 10) {
+                    // オレンジ (4〜9)
+                    baseColor = "#ff9900"; lightColor = "#ffcc99"; darkColor = "#996600";
+                } else if (b.hp < 20) {
+                    // 赤 (10〜19)
+                    baseColor = "#ff3333"; lightColor = "#ff9999"; darkColor = "#990000";
+                } else if (b.hp < 50) {
+                    // 紫 (20〜49)
+                    baseColor = "#cc33ff"; lightColor = "#ecb3ff"; darkColor = "#660099";
+                } else if (b.hp < 100) {
+                    // マゼンタ・ピンク (50〜99)
+                    baseColor = "#ff00aa"; lightColor = "#ff80d5"; darkColor = "#880055";
+                } else if (b.hp < 200) {
+                    // ディープブルー (100〜199)
+                    baseColor = "#0066ff"; lightColor = "#80b3ff"; darkColor = "#003399";
+                } else if (b.hp < 500) {
+                    // シアン (200〜499)
+                    baseColor = "#00ffff"; lightColor = "#b3ffff"; darkColor = "#008888";
+                } else {
+                    // ゴールド (500以上)
+                    baseColor = "#ffd700"; lightColor = "#fff5b3"; darkColor = "#b8860b";
                 }
 
                 let gradient = ctx.createLinearGradient(brickX, brickY, brickX + brickSize, brickY + brickSize);
-                gradient.addColorStop(0, lightColor); gradient.addColorStop(1, baseColor);
-                ctx.beginPath(); ctx.rect(brickX, brickY, brickSize, brickSize); ctx.fillStyle = gradient; ctx.fill();
+                gradient.addColorStop(0, lightColor); 
+                gradient.addColorStop(1, baseColor);
+                
+                ctx.beginPath(); 
+                ctx.rect(brickX, brickY, brickSize, brickSize); 
+                ctx.fillStyle = gradient; 
+                ctx.fill();
 
-                ctx.beginPath(); ctx.moveTo(brickX, brickY + brickSize);
+                ctx.beginPath(); 
+                ctx.moveTo(brickX, brickY + brickSize);
                 ctx.lineTo(brickX, brickY);
                 ctx.lineTo(brickX + brickSize, brickY);
-                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; ctx.lineWidth = 3; ctx.stroke();
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"; 
+                ctx.lineWidth = 3; 
+                ctx.stroke();
 
                 ctx.beginPath();
                 ctx.moveTo(brickX, brickY + brickSize);
-                ctx.lineTo(brickX + brickSize, brickY + brickSize); ctx.lineTo(brickX + brickSize, brickY);
-                ctx.strokeStyle = darkColor; ctx.lineWidth = 3;
+                ctx.lineTo(brickX + brickSize, brickY + brickSize); 
+                ctx.lineTo(brickX + brickSize, brickY);
+                ctx.strokeStyle = darkColor; 
+                ctx.lineWidth = 3;
                 ctx.stroke();
-                ctx.font = "bold 16px Arial"; ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+                ctx.font = "bold 16px Arial"; 
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.textAlign = "center"; 
+                ctx.textBaseline = "middle";
                 ctx.fillText(b.hp, brickX + brickSize / 2 + 1, brickY + brickSize / 2 + 1);
                 ctx.fillStyle = "#fff";
                 ctx.fillText(b.hp, brickX + brickSize / 2, brickY + brickSize / 2);
