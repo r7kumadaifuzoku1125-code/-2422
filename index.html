@@ -610,7 +610,6 @@
             </div>
             <div id="speed-controller">
                 <span>SPEED:</span>
-                <!-- maxを30から60に変更 -->
                 <input type="range" id="speedSlider" min="3" max="60" value="8" step="1">
                 <span id="speedValue">8</span>
             </div>
@@ -658,6 +657,23 @@ const DIFFICULTY_SETTINGS = {
     hard: { spawnProbability: 0.20, hpMultiplier: 1.5, itemDropRate: 0.01, name: "HARD" }
 };
 
+// administrator認証用のパスワードチェック関数
+function verifyAdminPassword() {
+    let pass = "";
+    while (pass !== "0r06ad2a") {
+        let input = prompt("パスワードを入力してください");
+        if (input === null) {
+            alert("パスワードが正しくありません。");
+            return false;
+        }
+        pass = input.trim();
+        if (pass !== "0r06ad2a") {
+            alert("パスワードが違います。再入力してください。");
+        }
+    }
+    return true;
+}
+
 function promptPlayerLogin() {
     let input = null;
     while (!input) {
@@ -665,7 +681,13 @@ function promptPlayerLogin() {
         if (res !== null) {
             res = res.trim();
             if (res.length > 0) {
-                input = res;
+                if (res.toLowerCase() === "administrator") {
+                    if (verifyAdminPassword()) {
+                        input = res;
+                    }
+                } else {
+                    input = res;
+                }
             } else {
                 alert("番号が入力されていません。入力してください。");
             }
@@ -686,6 +708,12 @@ async function renameCurrentAccount() {
         return;
     }
     if (newName === playerName) return;
+
+    if (newName.toLowerCase() === "administrator") {
+        if (!verifyAdminPassword()) {
+            return;
+        }
+    }
 
     const diffs = ["easy", "normal", "hard"];
     let nameExists = false;
@@ -1449,11 +1477,15 @@ function endAim() {
     const diffY = aimY - startY; 
     const distance = Math.sqrt(diffX * diffX + diffY * diffY);
     if (distance > 0) {
-        let targetDx = (diffX / distance) * ballSpeed;
-        let targetDy = (diffY / distance) * ballSpeed;
+        let dirX = diffX / distance;
+        let dirY = diffY / distance;
         
-        if (Math.abs(targetDy) < 1.5) {
-            targetDy = -1.5;
+        // 極端に水平に近い場合の補正（スピード設定値に依存せず純粋な角度で一定の上がりを確保）
+        if (Math.abs(dirY) < 0.1) {
+            dirY = -0.1;
+            const newDist = Math.sqrt(dirX * dirX + dirY * dirY);
+            dirX = dirX / newDist;
+            dirY = dirY / newDist;
         }
 
         balls = [];
@@ -1463,8 +1495,10 @@ function endAim() {
             balls.push({ 
                 x: startX, 
                 y: startY, 
-                dx: targetDx, 
-                dy: targetDy, 
+                dirX: dirX,
+                dirY: dirY,
+                dx: dirX * ballSpeed, 
+                dy: dirY * ballSpeed, 
                 active: false
             });
         }
@@ -1633,6 +1667,8 @@ function handleBalls() {
         for (let i = 0; i < balls.length; i++) {
             if (!balls[i].active && launchDelayCounter >= i * launchDelay) {
                 balls[i].active = true;
+                balls[i].dx = balls[i].dirX * ballSpeed;
+                balls[i].dy = balls[i].dirY * ballSpeed;
             }
         }
     }
@@ -1770,22 +1806,49 @@ function drawBricks() {
 
                 let baseColor, lightColor, darkColor;
 
-                if (b.hp < 4) {
-                    baseColor = "#ffff33"; lightColor = "#ffff99"; darkColor = "#999900";
-                } else if (b.hp < 10) {
-                    baseColor = "#ff9900"; lightColor = "#ffcc99"; darkColor = "#996600";
-                } else if (b.hp < 20) {
-                    baseColor = "#ff3333"; lightColor = "#ff9999"; darkColor = "#990000";
-                } else if (b.hp < 50) {
-                    baseColor = "#cc33ff"; lightColor = "#ecb3ff"; darkColor = "#660099";
-                } else if (b.hp < 100) {
-                    baseColor = "#ff00aa"; lightColor = "#ff80d5"; darkColor = "#880055";
-                } else if (b.hp < 200) {
-                    baseColor = "#0066ff"; lightColor = "#80b3ff"; darkColor = "#003399";
-                } else if (b.hp < 500) {
-                    baseColor = "#00ffff"; lightColor = "#b3ffff"; darkColor = "#008888";
+                // 150以降は25ごとに9色をループ
+                let colorStep = 0;
+                if (b.hp <= 3) {
+                    colorStep = 0; // 黄
+                } else if (b.hp <= 9) {
+                    colorStep = 1; // オレンジ
+                } else if (b.hp <= 19) {
+                    colorStep = 2; // 赤
+                } else if (b.hp <= 29) {
+                    colorStep = 3; // ビビットピンク
+                } else if (b.hp <= 49) {
+                    colorStep = 4; // 紫
+                } else if (b.hp <= 74) {
+                    colorStep = 5; // 青
+                } else if (b.hp <= 99) {
+                    colorStep = 6; // シアン
+                } else if (b.hp <= 124) {
+                    colorStep = 7; // ライムグリーン
+                } else if (b.hp <= 149) {
+                    colorStep = 8; // 金（ゴールド）
                 } else {
-                    baseColor = "#ffd700"; lightColor = "#fff5b3"; darkColor = "#b8860b";
+                    colorStep = Math.floor((b.hp - 150) / 25) % 9;
+                }
+
+                switch (colorStep) {
+                    case 0: // 黄
+                        baseColor = "#ffff33"; lightColor = "#ffff99"; darkColor = "#999900"; break;
+                    case 1: // オレンジ
+                        baseColor = "#ff9900"; lightColor = "#ffcc99"; darkColor = "#996600"; break;
+                    case 2: // 赤
+                        baseColor = "#ff3333"; lightColor = "#ff9999"; darkColor = "#990000"; break;
+                    case 3: // ビビットピンク
+                        baseColor = "#ff007f"; lightColor = "#ff80bf"; darkColor = "#99004d"; break;
+                    case 4: // 紫
+                        baseColor = "#800080"; lightColor = "#d280d2"; darkColor = "#400040"; break;
+                    case 5: // 青
+                        baseColor = "#0066ff"; lightColor = "#80b3ff"; darkColor = "#003399"; break;
+                    case 6: // シアン
+                        baseColor = "#00ffff"; lightColor = "#b3ffff"; darkColor = "#008888"; break;
+                    case 7: // ライムグリーン
+                        baseColor = "#32cd32"; lightColor = "#99e699"; darkColor = "#1e7b1e"; break;
+                    case 8: // 金（ゴールド）
+                        baseColor = "#ffd700"; lightColor = "#fff5b3"; darkColor = "#b8860b"; break;
                 }
 
                 let gradient = ctx.createLinearGradient(brickX, brickY, brickX + brickSize, brickY + brickSize);
@@ -1813,13 +1876,16 @@ function drawBricks() {
                 ctx.lineWidth = 3;
                 ctx.stroke();
 
+                // テキストの描画設定（黄色いブロック時のみ同化を防ぐため少し落ち着いたトーンの白色 #e0e0e0 を使用）
                 ctx.font = "bold 16px Arial"; 
-                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
                 ctx.textAlign = "center"; 
                 ctx.textBaseline = "middle";
-                ctx.fillText(b.hp, brickX + brickSize / 2 + 1, brickY + brickSize / 2 + 1);
-                ctx.fillStyle = "#fff";
-                ctx.fillText(b.hp, brickX + brickSize / 2, brickY + brickSize / 2);
+
+                const textX = brickX + brickSize / 2;
+                const textY = brickY + brickSize / 2;
+
+                ctx.fillStyle = (colorStep === 0) ? "#e0e0e0" : "#ffffff"; 
+                ctx.fillText(b.hp, textX, textY);
             }
         }
     }
