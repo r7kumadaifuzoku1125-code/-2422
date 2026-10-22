@@ -1480,7 +1480,6 @@ function endAim() {
         let dirX = diffX / distance;
         let dirY = diffY / distance;
         
-        // 極端に水平に近い場合の補正（スピード設定値に依存せず純粋な角度で一定の上がりを確保）
         if (Math.abs(dirY) < 0.1) {
             dirY = -0.1;
             const newDist = Math.sqrt(dirX * dirX + dirY * dirY);
@@ -1796,7 +1795,54 @@ function drawAimLine() {
     ctx.setLineDash([]);
 }
 
+// 16進数カラーコード(#rrggbb)をRGB値オブジェクトに変換
+function hexToRgb(hex) {
+    let bigint = parseInt(hex.replace("#", ""), 16);
+    return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+    };
+}
+
+// 2つのカラーコード間を比率 t (0.0 ～ 1.0) で線形補間する関数
+function lerpColor(hexColor1, hexColor2, t) {
+    let c1 = hexToRgb(hexColor1);
+    let c2 = hexToRgb(hexColor2);
+    let r = Math.round(c1.r + (c2.r - c1.r) * t);
+    let g = Math.round(c1.g + (c2.g - c1.g) * t);
+    let b = Math.round(c1.b + (c2.b - c1.b) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
 function drawBricks() {
+    // ご指定のHP1〜125までの固定色リスト
+    const baseColorStops = [
+        { hp: 1,   base: "#ffff33", light: "#ffff99", dark: "#999900" }, // 黄
+        { hp: 4,   base: "#ff9900", light: "#ffcc99", dark: "#996600" }, // オレンジ
+        { hp: 10,  base: "#ff3333", light: "#ff9999", dark: "#990000" }, // 赤
+        { hp: 20,  base: "#ff007f", light: "#ff80bf", dark: "#99004d" }, // ビビットピンク
+        { hp: 30,  base: "#800080", light: "#d280d2", dark: "#400040" }, // 紫
+        { hp: 50,  base: "#0066ff", light: "#80b3ff", dark: "#003399" }, // 青
+        { hp: 75,  base: "#00ffff", light: "#b3ffff", dark: "#008888" }, // シアン
+        { hp: 100, base: "#32cd32", light: "#99e699", dark: "#1e7b1e" }, // ライムグリーン
+        { hp: 125, base: "#ffd700", light: "#fff5b3", dark: "#b8860b" }  // 金・ゴールド
+    ];
+
+    // 125以降の「25刻みで黄から始まるループ用」の基本パレット（黄、オレンジ、赤、ピンク、紫、青、シアン、ライム、金）
+    const loopPalette = [
+        { base: "#ffff33", light: "#ffff99", dark: "#999900" }, // 黄
+        { base: "#ff9900", light: "#ffcc99", dark: "#996600" }, // オレンジ
+        { base: "#ff3333", light: "#ff9999", dark: "#990000" }, // 赤
+        { base: "#ff007f", light: "#ff80bf", dark: "#99004d" }, // ピンク
+        { base: "#800080", light: "#d280d2", dark: "#400040" }, // 紫
+        { base: "#0066ff", light: "#80b3ff", dark: "#003399" }, // 青
+        { base: "#00ffff", light: "#b3ffff", dark: "#008888" }, // シアン
+        { base: "#32cd32", light: "#99e699", dark: "#1e7b1e" }, // ライムグリーン
+        { base: "#ffd700", light: "#fff5b3", dark: "#b8860b" }  // 金
+    ];
+    const loopInterval = 25;
+
     for (let c = 0; c < brickColumnCount; c++) {
         for (let r = 0; r < bricks[c].length; r++) {
             const b = bricks[c][r];
@@ -1805,50 +1851,50 @@ function drawBricks() {
                 const brickY = r * (brickSize + brickPadding) + brickOffsetTop;
 
                 let baseColor, lightColor, darkColor;
+                const currentHp = b.hp;
 
-                // 150以降は25ごとに9色をループ
-                let colorStep = 0;
-                if (b.hp <= 3) {
-                    colorStep = 0; // 黄
-                } else if (b.hp <= 9) {
-                    colorStep = 1; // オレンジ
-                } else if (b.hp <= 19) {
-                    colorStep = 2; // 赤
-                } else if (b.hp <= 29) {
-                    colorStep = 3; // ビビットピンク
-                } else if (b.hp <= 49) {
-                    colorStep = 4; // 紫
-                } else if (b.hp <= 74) {
-                    colorStep = 5; // 青
-                } else if (b.hp <= 99) {
-                    colorStep = 6; // シアン
-                } else if (b.hp <= 124) {
-                    colorStep = 7; // ライムグリーン
-                } else if (b.hp <= 149) {
-                    colorStep = 8; // 金（ゴールド）
+                if (currentHp <= 125) {
+                    // HP 1〜125 は指定された正確な境界と色で補間
+                    if (currentHp <= baseColorStops[0].hp) {
+                        baseColor = baseColorStops[0].base;
+                        lightColor = baseColorStops[0].light;
+                        darkColor = baseColorStops[0].dark;
+                    } else if (currentHp >= baseColorStops[baseColorStops.length - 1].hp) {
+                        baseColor = baseColorStops[baseColorStops.length - 1].base;
+                        lightColor = baseColorStops[baseColorStops.length - 1].light;
+                        darkColor = baseColorStops[baseColorStops.length - 1].dark;
+                    } else {
+                        let startStop = baseColorStops[0];
+                        let endStop = baseColorStops[baseColorStops.length - 1];
+
+                        for (let i = 1; i < baseColorStops.length; i++) {
+                            if (currentHp <= baseColorStops[i].hp) {
+                                startStop = baseColorStops[i - 1];
+                                endStop = baseColorStops[i];
+                                break;
+                            }
+                        }
+
+                        let t = (currentHp - startStop.hp) / (endStop.hp - startStop.hp);
+                        if (isNaN(t)) t = 0;
+
+                        baseColor = lerpColor(startStop.base, endStop.base, t);
+                        lightColor = lerpColor(startStop.light, endStop.light, t);
+                        darkColor = lerpColor(startStop.dark, endStop.dark, t);
+                    }
                 } else {
-                    colorStep = Math.floor((b.hp - 150) / 25) % 9;
-                }
+                    // HP 125以降：25刻みで黄からループ
+                    let excess = currentHp - 125;
+                    let paletteIndex = Math.floor(excess / loopInterval) % loopPalette.length;
+                    let nextPaletteIndex = (paletteIndex + 1) % loopPalette.length;
+                    let t = (excess % loopInterval) / loopInterval;
 
-                switch (colorStep) {
-                    case 0: // 黄
-                        baseColor = "#ffff33"; lightColor = "#ffff99"; darkColor = "#999900"; break;
-                    case 1: // オレンジ
-                        baseColor = "#ff9900"; lightColor = "#ffcc99"; darkColor = "#996600"; break;
-                    case 2: // 赤
-                        baseColor = "#ff3333"; lightColor = "#ff9999"; darkColor = "#990000"; break;
-                    case 3: // ビビットピンク
-                        baseColor = "#ff007f"; lightColor = "#ff80bf"; darkColor = "#99004d"; break;
-                    case 4: // 紫
-                        baseColor = "#800080"; lightColor = "#d280d2"; darkColor = "#400040"; break;
-                    case 5: // 青
-                        baseColor = "#0066ff"; lightColor = "#80b3ff"; darkColor = "#003399"; break;
-                    case 6: // シアン
-                        baseColor = "#00ffff"; lightColor = "#b3ffff"; darkColor = "#008888"; break;
-                    case 7: // ライムグリーン
-                        baseColor = "#32cd32"; lightColor = "#99e699"; darkColor = "#1e7b1e"; break;
-                    case 8: // 金（ゴールド）
-                        baseColor = "#ffd700"; lightColor = "#fff5b3"; darkColor = "#b8860b"; break;
+                    let startStop = loopPalette[paletteIndex];
+                    let endStop = loopPalette[nextPaletteIndex];
+
+                    baseColor = lerpColor(startStop.base, endStop.base, t);
+                    lightColor = lerpColor(startStop.light, endStop.light, t);
+                    darkColor = lerpColor(startStop.dark, endStop.dark, t);
                 }
 
                 let gradient = ctx.createLinearGradient(brickX, brickY, brickX + brickSize, brickY + brickSize);
@@ -1876,15 +1922,14 @@ function drawBricks() {
                 ctx.lineWidth = 3;
                 ctx.stroke();
 
-                // テキストの描画設定（黄色いブロック時のみ同化を防ぐため少し落ち着いたトーンの白色 #e0e0e0 を使用）
-                ctx.font = "bold 16px Arial"; 
+                ctx.font = "normal 15px Arial"; 
                 ctx.textAlign = "center"; 
                 ctx.textBaseline = "middle";
 
                 const textX = brickX + brickSize / 2;
                 const textY = brickY + brickSize / 2;
 
-                ctx.fillStyle = (colorStep === 0) ? "#e0e0e0" : "#ffffff"; 
+                ctx.fillStyle = "#000000"; 
                 ctx.fillText(b.hp, textX, textY);
             }
         }
